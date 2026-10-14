@@ -10,6 +10,7 @@ import EventForm from './EventForm.jsx'
 import YearView from './YearView.jsx'
 import Clocks from './Clocks.jsx'
 import Profile from './Profile.jsx'
+import Avatar from './Avatar.jsx'
 
 export default function Calendar({ session, member, space, onProfileChange }) {
   const [cursor, setCursor] = useState(new Date())
@@ -58,6 +59,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     await loadMembers()
     await onProfileChange?.()
   }
+  const me = memberById[member.user_id] || member
   const partner = members.find((m) => m.user_id !== member.user_id)
 
   const byDate = useMemo(() => {
@@ -163,13 +165,16 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
         <main className="main">
           <header className="top">
-            <div>
+            <div className="hello-row">
+              <Avatar url={me.avatar_url} name={me.display_name} color={colorOf(member.user_id)} size="md" />
+              <div>
               <h1 className="hello">{greeting()}, {member.display_name}</h1>
               <p className="muted">
                 {partner ? <>Shared with {partner.display_name}{partner.about && <span className="status"> · {partner.about}</span>}</> : (
                   <>Invite code: <button className="code" onClick={copyCode}>{space.code} <Copy size={12} /> {copied && 'Copied'}</button></>
                 )}
               </p>
+              </div>
             </div>
             <div className="top-right">
               <Clocks />
@@ -264,7 +269,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                       {e.note && <span className="muted small note">{e.note}</span>}
                       <span className="meta">
                         <span><Clock size={13} /> {timeLabel(e)}</span>
-                        {owner && <span className="avatar" style={{ background: colorOf(owner.user_id) }} title={owner.display_name}>{owner.display_name[0]}</span>}
+                        {owner && <Avatar url={owner.avatar_url} name={owner.display_name} color={colorOf(owner.user_id)} />}
                       </span>
                     </button>
                   )
