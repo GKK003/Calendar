@@ -76,6 +76,7 @@ export default function EventForm({
     repeatDays: [],
     repeatWeeks: 12,
     repeatEvery: 1,
+    applyAll: Boolean(initial.series_id),
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -250,34 +251,34 @@ export default function EventForm({
             </div>
             {f.repeatDays.length > 0 ? (
               <>
-              <div className="seg tiny">
-                {[
-                  [1, "Every week"],
-                  [2, "Every 2 weeks"],
-                ].map(([n, label]) => (
-                  <button
-                    type="button"
-                    key={n}
-                    className={f.repeatEvery === n ? "on" : ""}
-                    onClick={() => set("repeatEvery", n)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <label>
-                For how long
-                <select
-                  value={f.repeatWeeks}
-                  onChange={(e) => set("repeatWeeks", Number(e.target.value))}
-                >
-                  {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n} {n === 1 ? "week" : "weeks"}
-                    </option>
+                <div className="seg tiny">
+                  {[
+                    [1, "Every week"],
+                    [2, "Every 2 weeks"],
+                  ].map(([n, label]) => (
+                    <button
+                      type="button"
+                      key={n}
+                      className={f.repeatEvery === n ? "on" : ""}
+                      onClick={() => set("repeatEvery", n)}
+                    >
+                      {label}
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+                <label>
+                  For how long
+                  <select
+                    value={f.repeatWeeks}
+                    onChange={(e) => set("repeatWeeks", Number(e.target.value))}
+                  >
+                    {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n} {n === 1 ? "week" : "weeks"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </>
             ) : (
               <p className="muted small">
@@ -288,9 +289,32 @@ export default function EventForm({
         )}
 
         {editing && initial.series_id && (
-          <p className="muted small">
-            Part of a repeating series. Edits here change only this day.
-          </p>
+          <div className="repeat">
+            <span className="lbl">
+              Part of a repeating series. Apply changes to
+            </span>
+            <div className="seg tiny">
+              <button
+                type="button"
+                className={f.applyAll ? "on" : ""}
+                onClick={() => set("applyAll", true)}
+              >
+                All events
+              </button>
+              <button
+                type="button"
+                className={f.applyAll ? "" : "on"}
+                onClick={() => set("applyAll", false)}
+              >
+                This event only
+              </button>
+            </div>
+            {f.applyAll && f.date !== initial.date && (
+              <p className="muted small">
+                A new date changes only this event. The others keep their dates.
+              </p>
+            )}
+          </div>
         )}
         {owner && <p className="muted small">Added by {owner.display_name}</p>}
 

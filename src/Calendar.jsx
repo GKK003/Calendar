@@ -35,6 +35,7 @@ import {
   PALETTE,
   TYPES,
   greeting,
+  hm,
   localizeEvent,
   mapHref,
   sortEvents,
@@ -184,7 +185,73 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const openNew = (date = selected) =>
     setForm({ initial: { date }, editing: false });
 
+  async function saveSeries(f) {
+    const i = form.initial;
+    const title = f.title.trim();
+    const note = f.note.trim() || null;
+    const place = f.place.trim() || null;
+    const start = f.allDay ? null : f.start || null;
+    const end = f.allDay ? null : f.end || null;
+    const patch = {};
+    if (title !== i.title) patch.title = title;
+    if (f.type !== i.type) patch.type = f.type;
+    if (note !== (i.note || null)) patch.note = note;
+    if (place !== (i.place || null)) patch.place = place;
+    const timeChanged =
+      start !== (i.start_time ? hm(i.start_time) : null) ||
+      end !== (i.end_time ? hm(i.end_time) : null);
+
+    if (timeChanged) {
+      const { data, error } = await supabase
+        .from("events")
+        .select("id, date, start_time, end_time, tz")
+        .eq("series_id", i.series_id);
+      if (error) return error.message;
+      const results = await Promise.all(
+        data.map((row) =>
+          supabase
+            .from("events")
+            .update({
+              ...patch,
+              date: row.id === i.id ? f.date : localizeEvent(row, tz).date,
+              start_time: start,
+              end_time: end,
+              tz,
+            })
+            .eq("id", row.id),
+        ),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed) return failed.error.message;
+    } else {
+      if (Object.keys(patch).length) {
+        const { error } = await supabase
+          .from("events")
+          .update(patch)
+          .eq("series_id", i.series_id);
+        if (error) return error.message;
+      }
+      if (f.date !== i.date) {
+        const { error } = await supabase
+          .from("events")
+          .update({ date: f.date, start_time: start, end_time: end, tz })
+          .eq("id", i.id);
+        if (error) return error.message;
+      }
+    }
+
+    seq.current++;
+    const d = parseISO(f.date);
+    if (!isSameMonth(d, cursor)) setCursor(d);
+    setSelected(f.date);
+    setForm(null);
+    load();
+    return null;
+  }
+
   async function save(f) {
+    if (form.editing && f.applyAll && form.initial.series_id)
+      return saveSeries(f);
     const base = {
       space_id: space.id,
       title: f.title.trim(),
