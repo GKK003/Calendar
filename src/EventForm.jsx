@@ -74,6 +74,7 @@ export default function EventForm({
     place: initial.place || "",
     repeatDays: [],
     repeatWeeks: 12,
+    repeatEvery: 1,
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -248,7 +249,7 @@ export default function EventForm({
 
         {!editing && (
           <div className="repeat">
-            <span className="lbl">Repeat every week on</span>
+            <span className="lbl">Repeat on</span>
             <div className="wd">
               {WEEKDAYS.map(([label, n]) => (
                 <button
@@ -262,19 +263,36 @@ export default function EventForm({
               ))}
             </div>
             {f.repeatDays.length > 0 ? (
-              <label>
-                For how long
-                <select
-                  value={f.repeatWeeks}
-                  onChange={(e) => set("repeatWeeks", Number(e.target.value))}
-                >
-                  {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n} {n === 1 ? "week" : "weeks"}
-                    </option>
+              <>
+                <div className="seg tiny">
+                  {[
+                    [1, "Every week"],
+                    [2, "Every 2 weeks"],
+                  ].map(([n, label]) => (
+                    <button
+                      type="button"
+                      key={n}
+                      className={f.repeatEvery === n ? "on" : ""}
+                      onClick={() => set("repeatEvery", n)}
+                    >
+                      {label}
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+                <label>
+                  For how long
+                  <select
+                    value={f.repeatWeeks}
+                    onChange={(e) => set("repeatWeeks", Number(e.target.value))}
+                  >
+                    {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n} {n === 1 ? "week" : "weeks"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
             ) : (
               <p className="muted small">
                 Pick days to repeat. Leave empty for a one-time event.

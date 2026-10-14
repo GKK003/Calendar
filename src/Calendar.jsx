@@ -3,6 +3,7 @@ import {
   addDays,
   addMonths,
   addYears,
+  differenceInCalendarWeeks,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
@@ -201,7 +202,13 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       const dates = f.repeatDays.length
         ? Array.from({ length: f.repeatWeeks * 7 }, (_, i) =>
             addDays(start, i),
-          ).filter((d) => f.repeatDays.includes(getDay(d)))
+          ).filter(
+            (d) =>
+              f.repeatDays.includes(getDay(d)) &&
+              differenceInCalendarWeeks(d, start, { weekStartsOn: 1 }) %
+                f.repeatEvery ===
+                0,
+          )
         : [start];
       const series_id = f.repeatDays.length ? uuid() : null;
       const rows = dates.map((d) => ({ ...base, date: ymd(d), series_id }));
