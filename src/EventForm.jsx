@@ -2,6 +2,26 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { TYPES } from './lib.js'
 
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+
+// 24-hour time picker (no AM/PM, same on every device)
+function TimeField({ value, onChange }) {
+  const [h = '09', m = '00'] = (value || '09:00').split(':')
+  const mins = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
+  if (!mins.includes(m)) { mins.push(m); mins.sort() }
+  return (
+    <div className="time">
+      <select aria-label="Hour" value={h} onChange={(e) => onChange(`${e.target.value}:${m}`)}>
+        {HOURS.map((x) => <option key={x} value={x}>{x}</option>)}
+      </select>
+      <b>:</b>
+      <select aria-label="Minutes" value={m} onChange={(e) => onChange(`${h}:${e.target.value}`)}>
+        {mins.map((x) => <option key={x} value={x}>{x}</option>)}
+      </select>
+    </div>
+  )
+}
+
 const WEEKDAYS = [['Mon', 1], ['Tue', 2], ['Wed', 3], ['Thu', 4], ['Fri', 5], ['Sat', 6], ['Sun', 0]]
 
 export default function EventForm({ initial, editing, members, onSave, onDelete, onDeleteSeries, onClose }) {
@@ -55,8 +75,8 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
 
         {!f.allDay && (
           <div className="row">
-            <label>From<input type="time" value={f.start} onChange={(e) => set('start', e.target.value)} /></label>
-            <label>To<input type="time" value={f.end} onChange={(e) => set('end', e.target.value)} /></label>
+            <div className="field"><span>From</span><TimeField value={f.start} onChange={(v) => set('start', v)} /></div>
+            <div className="field"><span>To</span><TimeField value={f.end} onChange={(v) => set('end', v)} /></div>
           </div>
         )}
 
