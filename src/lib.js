@@ -36,3 +36,36 @@ export function uuid() {
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
 }
+
+// ---------- time zones ----------
+export const ZONES = [
+  { id: 'Asia/Tbilisi', label: 'Tbilisi' },
+  { id: 'America/New_York', label: 'New York' },
+]
+
+export function clockIn(tz, date = new Date()) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date)
+}
+
+function tzOffset(tz, ts) {
+  const p = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(new Date(ts))
+  const g = (t) => Number(p.find((x) => x.type === t).value)
+  return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second')) - ts
+}
+
+// Convert a wall-clock time on a date from one zone to another (handles daylight saving)
+export function convertTime(dateStr, time, from, to) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const [h, mi] = time.split(':').map(Number)
+  const guess = Date.UTC(y, m - 1, d, h, mi)
+  let utc = guess - tzOffset(from, guess)
+  utc = guess - tzOffset(from, utc)
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: to, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(new Date(utc))
+  const g = (t) => p.find((x) => x.type === t).value
+  const dayShift = Math.round((Date.UTC(+g('year'), +g('month') - 1, +g('day')) - Date.UTC(y, m - 1, d)) / 86400000)
+  return { time: `${g('hour')}:${g('minute')}`, dayShift }
+}

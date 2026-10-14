@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import { TYPES } from './lib.js'
+import { TYPES, ZONES, convertTime } from './lib.js'
+import Clocks from './Clocks.jsx'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 
@@ -37,8 +38,13 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
     repeatWeeks: 12,
   })
   const [busy, setBusy] = useState(false)
+  const [zone, setZone] = useState(ZONES[0].id)
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const toggleDay = (n) => setF((p) => ({ ...p, repeatDays: p.repeatDays.includes(n) ? p.repeatDays.filter((x) => x !== n) : [...p.repeatDays, n] }))
+  const other = ZONES.find((z) => z.id !== zone)
+  const here = ZONES.find((z) => z.id === zone)
+  const a = !f.allDay && f.date && f.start ? convertTime(f.date, f.start, zone, other.id) : null
+  const b = !f.allDay && f.date && f.end ? convertTime(f.date, f.end, zone, other.id) : null
   const owner = editing && members.find((m) => m.user_id === initial.user_id)
 
   async function submit(e) {
@@ -79,6 +85,26 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
             <div className="field"><span>To</span><TimeField value={f.end} onChange={(v) => set('end', v)} /></div>
           </div>
         )}
+
+        <div className="tz">
+          <Clocks compact />
+          {a && (
+            <>
+              <div className="tz-row">
+                <span className="small muted">Times above are in</span>
+                <div className="seg tiny">
+                  {ZONES.map((z) => (
+                    <button type="button" key={z.id} className={zone === z.id ? 'on' : ''} onClick={() => setZone(z.id)}>{z.label}</button>
+                  ))}
+                </div>
+              </div>
+              <p className="tz-result">
+                {f.start}–{f.end} {here.label} = <strong>{a.time}{b ? `–${b.time}` : ''} {other.label}</strong>
+                {a.dayShift !== 0 && <span className="muted"> ({a.dayShift > 0 ? 'next day' : 'previous day'})</span>}
+              </p>
+            </>
+          )}
+        </div>
 
         <label>Note<textarea rows={2} value={f.note} onChange={(e) => set('note', e.target.value)} placeholder="Add note" /></label>
 

@@ -209,3 +209,19 @@ label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--t
 .time select { padding: 11px 6px; text-align: center; text-align-last: center; }
 .time b { font-weight: 500; color: var(--muted); }
 .sheet input, .sheet select, .sheet textarea { min-width: 0; }
+
+/* clocks */
+.top-right { display: flex; align-items: center; gap: 14px; }
+.clocks { display: flex; gap: 10px; }
+.clock { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 6px 14px; display: flex; flex-direction: column; line-height: 1.2; min-width: 104px; }
+.clock span { font-size: 11px; color: var(--muted); }
+.clock b { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+.clocks.compact .clock { flex: 1; background: var(--tint); }
+.clocks.compact .clock b { font-size: 16px; }
+.tz { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 14px; background: var(--green-soft); }
+.tz-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tz-result { font-size: 14px; }
+@media (max-width: 860px) {
+  .top-right { flex-direction: column; align-items: stretch; width: 100%; gap: 10px; }
+  .top-right .clock { flex: 1; }
+}

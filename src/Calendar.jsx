@@ -8,6 +8,7 @@ import { supabase } from './supabase.js'
 import { AVATARS, TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
 import EventForm from './EventForm.jsx'
 import YearView from './YearView.jsx'
+import Clocks from './Clocks.jsx'
 
 export default function Calendar({ session, member, space }) {
   const [cursor, setCursor] = useState(new Date())
@@ -155,10 +156,13 @@ export default function Calendar({ session, member, space }) {
                 )}
               </p>
             </div>
+            <div className="top-right">
+              <Clocks />
             <label className="search">
               <Search size={16} />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search events" />
             </label>
+            </div>
           </header>
 
           <div className="filters">
