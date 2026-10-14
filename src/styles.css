@@ -187,3 +187,5 @@ label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--t
 .wd { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .wd button { padding: 9px 0; border-radius: 10px; font-size: 13px; background: var(--glass); border: 1px solid var(--line); color: var(--muted); }
 .wd button.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+.actions { flex-wrap: wrap; }
+.btn.danger.solid { background: var(--danger); color: #fff; }

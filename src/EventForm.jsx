@@ -4,7 +4,7 @@ import { TYPES } from './lib.js'
 
 const WEEKDAYS = [['Mon', 1], ['Tue', 2], ['Wed', 3], ['Thu', 4], ['Fri', 5], ['Sat', 6], ['Sun', 0]]
 
-export default function EventForm({ initial, editing, members, onSave, onDelete, onClose }) {
+export default function EventForm({ initial, editing, members, onSave, onDelete, onDeleteSeries, onClose }) {
   const [f, setF] = useState({
     title: initial.title || '',
     date: initial.date,
@@ -82,10 +82,12 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
           </div>
         )}
 
+        {editing && initial.series_id && <p className="muted small">Part of a repeating series. Edits here change only this day.</p>}
         {owner && <p className="muted small">Added by {owner.display_name}</p>}
 
         <div className="actions">
-          {editing && <button type="button" className="btn danger" onClick={onDelete}><Trash2 size={16} /> Delete</button>}
+          {editing && <button type="button" className="btn danger" onClick={onDelete}><Trash2 size={16} /> {initial.series_id ? 'Delete this day' : 'Delete'}</button>}
+          {editing && initial.series_id && <button type="button" className="btn danger solid" onClick={onDeleteSeries}><Trash2 size={16} /> Delete all</button>}
           <button className="btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
         </div>
       </form>

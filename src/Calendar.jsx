@@ -5,7 +5,7 @@ import {
 } from 'date-fns'
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock } from 'lucide-react'
 import { supabase } from './supabase.js'
-import { TYPES, greeting, sortEvents, timeLabel, ymd } from './lib.js'
+import { TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
 import EventForm from './EventForm.jsx'
 import YearView from './YearView.jsx'
 
@@ -90,7 +90,8 @@ export default function Calendar({ session, member, space }) {
       const dates = f.repeatDays.length
         ? Array.from({ length: f.repeatWeeks * 7 }, (_, i) => addDays(start, i)).filter((d) => f.repeatDays.includes(getDay(d)))
         : [start]
-      const rows = dates.map((d) => ({ ...base, date: ymd(d) }))
+      const series_id = f.repeatDays.length ? uuid() : null
+      const rows = dates.map((d) => ({ ...base, date: ymd(d), series_id }))
       await supabase.from('events').insert(rows)
     }
     setSelected(f.date)
@@ -101,6 +102,15 @@ export default function Calendar({ session, member, space }) {
   async function remove() {
     if (!confirm('Delete this event?')) return
     await supabase.from('events').delete().eq('id', form.initial.id)
+    setForm(null)
+    load()
+  }
+
+  async function removeSeries() {
+    const id = form.initial.series_id
+    const { count } = await supabase.from('events').select('id', { count: 'exact', head: true }).eq('series_id', id)
+    if (!confirm(`Delete all ${count ?? ''} events in this repeating series?`.replace('  ', ' '))) return
+    await supabase.from('events').delete().eq('series_id', id)
     setForm(null)
     load()
   }
@@ -233,7 +243,7 @@ export default function Calendar({ session, member, space }) {
       <button className="fab" onClick={() => openNew()} aria-label="Add event"><Plus size={26} /></button>
 
       {form && (
-        <EventForm initial={form.initial} editing={form.editing} members={members} onSave={save} onDelete={remove} onClose={() => setForm(null)} />
+        <EventForm initial={form.initial} editing={form.editing} members={members} onSave={save} onDelete={remove} onDeleteSeries={removeSeries} onClose={() => setForm(null)} />
       )}
     </div>
   )
