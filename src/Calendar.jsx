@@ -45,11 +45,13 @@ import YearView from "./YearView.jsx";
 import Clocks from "./Clocks.jsx";
 import Profile from "./Profile.jsx";
 import Avatar from "./Avatar.jsx";
+import PartnerProfile from "./PartnerProfile.jsx";
 
 export default function Calendar({ session, member, space, onProfileChange }) {
   const [cursor, setCursor] = useState(new Date());
   const [selected, setSelected] = useState(ymd(new Date()));
   const [view, setView] = useState("month");
+  const [profileTab, setProfileTab] = useState("me");
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([member]);
   const [types, setTypes] = useState(new Set(Object.keys(TYPES)));
@@ -119,6 +121,11 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       ) % AVATARS.length
     ];
   };
+  function openPartner() {
+    loadMembers();
+    setProfileTab("partner");
+    setView("profile");
+  }
   async function profileSaved() {
     await loadMembers();
     await onProfileChange?.();
@@ -346,7 +353,9 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                 <p className="muted">
                   {partner ? (
                     <>
-                      Shared with {partner.display_name}
+                      <button className="linklike" onClick={openPartner}>
+                        Shared with {partner.display_name}
+                      </button>
                       {partner.about && (
                         <span className="status"> · {partner.about}</span>
                       )}
@@ -376,13 +385,38 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           </header>
 
           {view === "profile" ? (
-            <Profile
-              session={session}
-              member={memberById[member.user_id] || member}
-              partner={partner}
-              color={colorOf(member.user_id)}
-              onSaved={profileSaved}
-            />
+            <>
+              {partner && (
+                <div className="seg ptabs">
+                  <button
+                    className={profileTab === "me" ? "on" : ""}
+                    onClick={() => setProfileTab("me")}
+                  >
+                    Me
+                  </button>
+                  <button
+                    className={profileTab === "partner" ? "on" : ""}
+                    onClick={openPartner}
+                  >
+                    {partner.display_name}
+                  </button>
+                </div>
+              )}
+              {profileTab === "partner" && partner ? (
+                <PartnerProfile
+                  partner={partner}
+                  color={colorOf(partner.user_id)}
+                />
+              ) : (
+                <Profile
+                  session={session}
+                  member={memberById[member.user_id] || member}
+                  partner={partner}
+                  color={colorOf(member.user_id)}
+                  onSaved={profileSaved}
+                />
+              )}
+            </>
           ) : (
             <>
               <div className="filters">
