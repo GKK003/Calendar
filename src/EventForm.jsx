@@ -73,7 +73,7 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
             {f.repeatDays.length > 0 ? (
               <label>For how long
                 <select value={f.repeatWeeks} onChange={(e) => set('repeatWeeks', Number(e.target.value))}>
-                  {[2, 4, 8, 12, 16, 26, 52].map((n) => <option key={n} value={n}>{n} weeks</option>)}
+                  {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} {n === 1 ? 'week' : 'weeks'}</option>)}
                 </select>
               </label>
             ) : (
