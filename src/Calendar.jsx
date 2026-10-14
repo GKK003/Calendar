@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  addDays, addMonths, addYears, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, isToday,
+  addDays, addMonths, addYears, eachDayOfInterval, endOfMonth, endOfWeek, format, getDay, isSameMonth, isToday,
   parseISO, startOfMonth, startOfWeek,
 } from 'date-fns'
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock } from 'lucide-react'
@@ -86,7 +86,11 @@ export default function Calendar({ session, member, space }) {
     if (form.editing) {
       await supabase.from('events').update({ ...base, date: f.date }).eq('id', form.initial.id)
     } else {
-      const rows = Array.from({ length: f.repeat }, (_, i) => ({ ...base, date: ymd(addDays(parseISO(f.date), 7 * i)) }))
+      const start = parseISO(f.date)
+      const dates = f.repeatDays.length
+        ? Array.from({ length: f.repeatWeeks * 7 }, (_, i) => addDays(start, i)).filter((d) => f.repeatDays.includes(getDay(d)))
+        : [start]
+      const rows = dates.map((d) => ({ ...base, date: ymd(d) }))
       await supabase.from('events').insert(rows)
     }
     setSelected(f.date)

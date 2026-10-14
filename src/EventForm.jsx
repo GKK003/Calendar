@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { TYPES } from './lib.js'
 
+const WEEKDAYS = [['Mon', 1], ['Tue', 2], ['Wed', 3], ['Thu', 4], ['Fri', 5], ['Sat', 6], ['Sun', 0]]
+
 export default function EventForm({ initial, editing, members, onSave, onDelete, onClose }) {
   const [f, setF] = useState({
     title: initial.title || '',
@@ -11,10 +13,12 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
     start: initial.start_time?.slice(0, 5) || '09:00',
     end: initial.end_time?.slice(0, 5) || '10:00',
     note: initial.note || '',
-    repeat: 1,
+    repeatDays: [],
+    repeatWeeks: 12,
   })
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
+  const toggleDay = (n) => setF((p) => ({ ...p, repeatDays: p.repeatDays.includes(n) ? p.repeatDays.filter((x) => x !== n) : [...p.repeatDays, n] }))
   const owner = editing && members.find((m) => m.user_id === initial.user_id)
 
   async function submit(e) {
@@ -59,12 +63,23 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
         <label>Note<textarea rows={2} value={f.note} onChange={(e) => set('note', e.target.value)} placeholder="Add note" /></label>
 
         {!editing && (
-          <label>Repeat weekly
-            <select value={f.repeat} onChange={(e) => set('repeat', Number(e.target.value))}>
-              <option value={1}>Does not repeat</option>
-              {[2, 4, 8, 12, 16, 26, 52].map((n) => <option key={n} value={n}>For {n} weeks</option>)}
-            </select>
-          </label>
+          <div className="repeat">
+            <span className="lbl">Repeat every week on</span>
+            <div className="wd">
+              {WEEKDAYS.map(([label, n]) => (
+                <button type="button" key={n} className={f.repeatDays.includes(n) ? 'on' : ''} onClick={() => toggleDay(n)}>{label}</button>
+              ))}
+            </div>
+            {f.repeatDays.length > 0 ? (
+              <label>For how long
+                <select value={f.repeatWeeks} onChange={(e) => set('repeatWeeks', Number(e.target.value))}>
+                  {[2, 4, 8, 12, 16, 26, 52].map((n) => <option key={n} value={n}>{n} weeks</option>)}
+                </select>
+              </label>
+            ) : (
+              <p className="muted small">Pick days to repeat. Leave empty for a one-time event.</p>
+            )}
+          </div>
         )}
 
         {owner && <p className="muted small">Added by {owner.display_name}</p>}

@@ -180,3 +180,10 @@ label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--t
   @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none !important; } }
+
+/* weekday repeat picker */
+.repeat { display: flex; flex-direction: column; gap: 8px; }
+.repeat .lbl { font-size: 13px; color: var(--muted); }
+.wd { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.wd button { padding: 9px 0; border-radius: 10px; font-size: 13px; background: var(--glass); border: 1px solid var(--line); color: var(--muted); }
+.wd button.on { background: var(--blue); border-color: var(--blue); color: #fff; }
