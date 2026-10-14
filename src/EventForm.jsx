@@ -34,6 +34,7 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
     start: initial.start_time?.slice(0, 5) || '09:00',
     end: initial.end_time?.slice(0, 5) || '10:00',
     note: initial.note || '',
+    place: initial.place || '',
     repeatDays: [],
     repeatWeeks: 12,
   })
@@ -105,6 +106,10 @@ export default function EventForm({ initial, editing, members, onSave, onDelete,
             </>
           )}
         </div>
+
+        <label>Place
+          <input value={f.place} onChange={(e) => set('place', e.target.value)} placeholder="Paste a map link or write an address" />
+        </label>
 
         <label>Note<textarea rows={2} value={f.note} onChange={(e) => set('note', e.target.value)} placeholder="Add note" /></label>
 

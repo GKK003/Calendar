@@ -72,3 +72,13 @@ export function convertTime(dateStr, time, from, to) {
 
 // Colors people can pick for their avatar
 export const PALETTE = ['#f6a9c4', '#a9ddc2', '#cdb8f5', '#ffc9a3', '#a8d4f5', '#f7e3a1']
+
+// Turn what was typed in "Place" into a link that opens the Maps app on a phone.
+// Accepts a map link, or just an address (then it searches that address on Google Maps).
+export function mapHref(place) {
+  const t = (place || '').trim()
+  if (!t) return null
+  if (/^https?:\/\//i.test(t)) return t
+  if (/^(www\.|maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google|google\.[a-z.]+\/maps|maps\.apple\.com)/i.test(t)) return 'https://' + t
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(t)
+}

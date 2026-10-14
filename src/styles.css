@@ -249,3 +249,11 @@ label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--t
 .photo-row { display: flex; align-items: center; gap: 16px; }
 .photo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .photo-actions p { flex-basis: 100%; }
+
+/* event card with optional map button */
+.ev-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; min-width: 0; }
+.ev-card:hover { background: var(--tint); }
+.ev-card .ev { border: 0; border-radius: 0; background: transparent; }
+.ev-card .ev:hover { background: transparent; }
+.map-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 14px; border-top: 1px solid var(--line); background: var(--green-soft); color: #1f5f45; font-size: 15px; font-weight: 500; text-decoration: none; }
+.map-btn:hover { background: var(--green); }

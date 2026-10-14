@@ -3,9 +3,9 @@ import {
   addDays, addMonths, addYears, eachDayOfInterval, endOfMonth, endOfWeek, format, getDay, isSameMonth, isToday,
   parseISO, startOfMonth, startOfWeek,
 } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock, Trash2, User } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock, Trash2, User, MapPin } from 'lucide-react'
 import { supabase } from './supabase.js'
-import { AVATARS, PALETTE, TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
+import { AVATARS, PALETTE, TYPES, greeting, mapHref, sortEvents, timeLabel, uuid, ymd } from './lib.js'
 import EventForm from './EventForm.jsx'
 import YearView from './YearView.jsx'
 import Clocks from './Clocks.jsx'
@@ -98,7 +98,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
   async function save(f) {
     const base = {
-      space_id: space.id, title: f.title.trim(), type: f.type, note: f.note.trim() || null,
+      space_id: space.id, title: f.title.trim(), type: f.type, note: f.note.trim() || null, place: f.place.trim() || null,
       start_time: f.allDay ? null : f.start || null, end_time: f.allDay ? null : f.end || null,
     }
     if (form.editing) {
@@ -263,7 +263,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                 {dayEvents.map((e) => {
                   const owner = memberById[e.user_id]
                   return (
-                    <button key={e.id} className="ev" onClick={() => setForm({ initial: e, editing: true })}>
+                    <div key={e.id} className="ev-card">
+                    <button className="ev" onClick={() => setForm({ initial: e, editing: true })}>
                       <span className="bar" style={{ background: TYPES[e.type].color }} />
                       <strong>{e.title}</strong>
                       {e.note && <span className="muted small note">{e.note}</span>}
@@ -272,6 +273,10 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         {owner && <Avatar url={owner.avatar_url} name={owner.display_name} color={colorOf(owner.user_id)} />}
                       </span>
                     </button>
+                    {mapHref(e.place) && (
+                      <a className="map-btn" href={mapHref(e.place)} target="_blank" rel="noopener noreferrer"><MapPin size={16} /> Open map</a>
+                    )}
+                    </div>
                   )
                 })}
               </div>
