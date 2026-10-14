@@ -3,7 +3,7 @@ import {
   addDays, addMonths, addYears, eachDayOfInterval, endOfMonth, endOfWeek, format, getDay, isSameMonth, isToday,
   parseISO, startOfMonth, startOfWeek,
 } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock, Trash2 } from 'lucide-react'
 import { supabase } from './supabase.js'
 import { TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
 import EventForm from './EventForm.jsx'
@@ -115,6 +115,16 @@ export default function Calendar({ session, member, space }) {
     load()
   }
 
+  async function clearAll() {
+    if (!confirm('Delete ALL events for both of you? This cannot be undone.')) return
+    const word = prompt('Type DELETE to confirm')
+    if (word?.trim().toUpperCase() !== 'DELETE') return
+    const { error } = await supabase.from('events').delete().eq('space_id', space.id)
+    if (error) return alert('Could not clear events: ' + error.message)
+    setEvents([])
+    load()
+  }
+
   function copyCode() {
     navigator.clipboard?.writeText(space.code)
     setCopied(true)
@@ -130,7 +140,8 @@ export default function Calendar({ session, member, space }) {
           <div className="logo">V</div>
           <button className={'rail-btn' + (view === 'month' ? ' on' : '')} onClick={() => setView('month')} aria-label="Month view"><CalendarDays size={20} /><span>Month</span></button>
           <button className={'rail-btn' + (view === 'year' ? ' on' : '')} onClick={() => setView('year')} aria-label="Year view"><LayoutGrid size={20} /><span>Year</span></button>
-          <button className="rail-btn spacer" onClick={() => supabase.auth.signOut()} aria-label="Sign out"><LogOut size={20} /><span>Sign out</span></button>
+          <button className="rail-btn warn spacer" onClick={clearAll} aria-label="Clear all events"><Trash2 size={20} /><span>Clear all</span></button>
+          <button className="rail-btn" onClick={() => supabase.auth.signOut()} aria-label="Sign out"><LogOut size={20} /><span>Sign out</span></button>
         </nav>
 
         <main className="main">

@@ -189,3 +189,5 @@ label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--t
 .wd button.on { background: var(--blue); border-color: var(--blue); color: #fff; }
 .actions { flex-wrap: wrap; }
 .btn.danger.solid { background: var(--danger); color: #fff; }
+.rail-btn.warn { color: var(--danger); }
+@media (max-width: 860px) { .rail-btn.spacer { margin-top: 0; } }
