@@ -1,11 +1,14 @@
 import { format } from 'date-fns'
 
 export const TYPES = {
-  work: { label: 'Work', color: '#2f95ff' },
-  study: { label: 'Study', color: '#c4e84a' },
-  important: { label: 'Important', color: '#ff7a59' },
-  personal: { label: 'Personal', color: '#b48cff' },
+  work: { label: 'Work', color: '#f48fb1' },
+  study: { label: 'Study', color: '#7fcfa3' },
+  important: { label: 'Important', color: '#ffb27a' },
+  personal: { label: 'Personal', color: '#b9a6f2' },
 }
+
+// Avatar colors for the two people (same on both phones)
+export const AVATARS = ['#f6a9c4', '#a9ddc2']
 
 export const ymd = (d) => format(d, 'yyyy-MM-dd')
 export const hm = (t) => (t ? t.slice(0, 5) : '')

@@ -5,7 +5,7 @@ import {
 } from 'date-fns'
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock, Trash2 } from 'lucide-react'
 import { supabase } from './supabase.js'
-import { TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
+import { AVATARS, TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
 import EventForm from './EventForm.jsx'
 import YearView from './YearView.jsx'
 
@@ -42,6 +42,7 @@ export default function Calendar({ session, member, space }) {
   }, [space.id, load])
 
   const memberById = useMemo(() => Object.fromEntries(members.map((m) => [m.user_id, m])), [members])
+  const colorOf = (id) => AVATARS[Math.max(0, [...members].sort((a, b) => a.user_id.localeCompare(b.user_id)).findIndex((m) => m.user_id === id)) % AVATARS.length]
   const partner = members.find((m) => m.user_id !== member.user_id)
 
   const byDate = useMemo(() => {
@@ -240,7 +241,7 @@ export default function Calendar({ session, member, space }) {
                       {e.note && <span className="muted small note">{e.note}</span>}
                       <span className="meta">
                         <span><Clock size={13} /> {timeLabel(e)}</span>
-                        {owner && <span className="avatar" style={{ background: owner.color }} title={owner.display_name}>{owner.display_name[0]}</span>}
+                        {owner && <span className="avatar" style={{ background: colorOf(owner.user_id) }} title={owner.display_name}>{owner.display_name[0]}</span>}
                       </span>
                     </button>
                   )
