@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 
 export const TYPES = {
   work: { label: 'Work', color: '#f48fb1' },
@@ -38,10 +38,14 @@ export function uuid() {
 }
 
 // ---------- time zones ----------
-export const ZONES = [
-  { id: 'Asia/Tbilisi', label: 'Tbilisi' },
-  { id: 'America/New_York', label: 'New York' },
+export const CITIES = [
+  { id: 'tbilisi', label: 'Tbilisi', tz: 'Asia/Tbilisi' },
+  { id: 'nyc', label: 'New York', tz: 'America/New_York' },
 ]
+
+export const ZONES = CITIES.map((c) => ({ id: c.tz, label: c.label }))
+
+export const zoneOfCity = (city) => (CITIES.find((c) => c.id === city) || CITIES[0]).tz
 
 export function clockIn(tz, date = new Date()) {
   return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date)
@@ -68,6 +72,18 @@ export function convertTime(dateStr, time, from, to) {
   const g = (t) => p.find((x) => x.type === t).value
   const dayShift = Math.round((Date.UTC(+g('year'), +g('month') - 1, +g('day')) - Date.UTC(y, m - 1, d)) / 86400000)
   return { time: `${g('hour')}:${g('minute')}`, dayShift }
+}
+
+export function localizeEvent(ev, tz) {
+  if (!ev.tz || !ev.start_time || ev.tz === tz) return ev
+  const s = convertTime(ev.date, hm(ev.start_time), ev.tz, tz)
+  const e = ev.end_time ? convertTime(ev.date, hm(ev.end_time), ev.tz, tz) : null
+  return {
+    ...ev,
+    date: ymd(addDays(parseISO(ev.date), s.dayShift)),
+    start_time: s.time,
+    end_time: e ? e.time : null,
+  }
 }
 
 // Colors people can pick for their avatar

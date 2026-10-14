@@ -55,6 +55,7 @@ const WEEKDAYS = [
 ];
 
 export default function EventForm({
+  tz,
   initial,
   editing,
   members,
@@ -79,7 +80,7 @@ export default function EventForm({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const downOnBackdrop = useRef(false);
-  const [zone, setZone] = useState(ZONES[0].id);
+  const zone = tz;
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleDay = (n) =>
     setF((p) => ({
@@ -193,24 +194,9 @@ export default function EventForm({
         )}
 
         <div className="tz">
-          <Clocks compact />
+          <Clocks compact tz={tz} />
           {a && (
             <>
-              <div className="tz-row">
-                <span className="small muted">Times above are in</span>
-                <div className="seg tiny">
-                  {ZONES.map((z) => (
-                    <button
-                      type="button"
-                      key={z.id}
-                      className={zone === z.id ? "on" : ""}
-                      onClick={() => setZone(z.id)}
-                    >
-                      {z.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
               <p className="tz-result">
                 {f.start}–{f.end} {here.label} ={" "}
                 <strong>
@@ -264,34 +250,34 @@ export default function EventForm({
             </div>
             {f.repeatDays.length > 0 ? (
               <>
-                <div className="seg tiny">
-                  {[
-                    [1, "Every week"],
-                    [2, "Every 2 weeks"],
-                  ].map(([n, label]) => (
-                    <button
-                      type="button"
-                      key={n}
-                      className={f.repeatEvery === n ? "on" : ""}
-                      onClick={() => set("repeatEvery", n)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <label>
-                  For how long
-                  <select
-                    value={f.repeatWeeks}
-                    onChange={(e) => set("repeatWeeks", Number(e.target.value))}
+              <div className="seg tiny">
+                {[
+                  [1, "Every week"],
+                  [2, "Every 2 weeks"],
+                ].map(([n, label]) => (
+                  <button
+                    type="button"
+                    key={n}
+                    className={f.repeatEvery === n ? "on" : ""}
+                    onClick={() => set("repeatEvery", n)}
                   >
-                    {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {n} {n === 1 ? "week" : "weeks"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label>
+                For how long
+                <select
+                  value={f.repeatWeeks}
+                  onChange={(e) => set("repeatWeeks", Number(e.target.value))}
+                >
+                  {Array.from({ length: 40 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? "week" : "weeks"}
+                    </option>
+                  ))}
+                </select>
+              </label>
               </>
             ) : (
               <p className="muted small">

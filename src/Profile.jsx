@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Camera, Check, LogOut, Trash2 } from 'lucide-react'
 import { supabase } from './supabase.js'
-import { PALETTE } from './lib.js'
+import { CITIES, PALETTE } from './lib.js'
 import Avatar from './Avatar.jsx'
 
 // Crop to a centered square and shrink, so phone photos stay small
@@ -26,6 +26,7 @@ export default function Profile({ session, member, partner, color, onSaved }) {
   const [name, setName] = useState(member.display_name)
   const [col, setCol] = useState(color)
   const [about, setAbout] = useState(member.about || '')
+  const [city, setCity] = useState(member.city || CITIES[0].id)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
 
@@ -44,7 +45,7 @@ export default function Profile({ session, member, partner, color, onSaved }) {
     if (!n) return setMsg({ ok: false, text: 'Please enter a name.' })
     setBusy(true)
     setMsg(null)
-    const { error } = await supabase.from('members').update({ display_name: n, color: col }).eq('user_id', member.user_id)
+    const { error } = await supabase.from('members').update({ display_name: n, color: col, city }).eq('user_id', member.user_id)
     if (error) {
       setBusy(false)
       return setMsg({ ok: false, text: error.message })
@@ -139,6 +140,16 @@ export default function Profile({ session, member, partner, color, onSaved }) {
             ))}
           </div>
         </div>
+
+        <div className="swatch-wrap">
+          <span className="lbl">Where you live</span>
+          <div className="seg tiny">
+            {CITIES.map((c) => (
+              <button type="button" key={c.id} className={city === c.id ? 'on' : ''} onClick={() => setCity(c.id)}>{c.label}</button>
+            ))}
+          </div>
+        </div>
+        <p className="muted small">Event times are shown in your city's time.</p>
 
         <label>About me or status
           <input value={about} onChange={(e) => setAbout(e.target.value)} maxLength={60} placeholder="Exam week, send snacks" />

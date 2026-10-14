@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { supabase } from './supabase.js'
-import { TYPES, timeLabel, ymd } from './lib.js'
+import { TYPES, localizeEvent, timeLabel, ymd } from './lib.js'
 import Avatar from './Avatar.jsx'
 
 function Row({ e, withDate }) {
@@ -16,7 +16,7 @@ function Row({ e, withDate }) {
   )
 }
 
-export default function PartnerProfile({ partner, color }) {
+export default function PartnerProfile({ partner, color, tz }) {
   const [zoom, setZoom] = useState(false)
   const [list, setList] = useState(null)
   const today = ymd(new Date())
@@ -26,9 +26,9 @@ export default function PartnerProfile({ partner, color }) {
     supabase.from('events').select('*')
       .eq('user_id', partner.user_id).gte('date', today)
       .order('date').order('start_time').limit(30)
-      .then(({ data }) => live && setList(data || []))
+      .then(({ data }) => live && setList((data || []).map((e) => localizeEvent(e, tz))))
     return () => { live = false }
-  }, [partner.user_id, today])
+  }, [partner.user_id, today, tz])
 
   const todays = (list || []).filter((e) => e.date === today)
   const next = (list || []).filter((e) => e.date > today).slice(0, 6)

@@ -35,11 +35,13 @@ import {
   PALETTE,
   TYPES,
   greeting,
+  localizeEvent,
   mapHref,
   sortEvents,
   timeLabel,
   uuid,
   ymd,
+  zoneOfCity,
 } from "./lib.js";
 import EventForm from "./EventForm.jsx";
 import YearView from "./YearView.jsx";
@@ -133,11 +135,13 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   }
   const me = memberById[member.user_id] || member;
   const partner = members.find((m) => m.user_id !== member.user_id);
+  const tz = zoneOfCity(me.city);
 
   const byDate = useMemo(() => {
     const q = query.trim().toLowerCase();
     const map = {};
-    for (const e of events) {
+    for (const raw of events) {
+      const e = localizeEvent(raw, tz);
       if (!types.has(e.type)) continue;
       if (who !== "all" && e.user_id !== who) continue;
       if (q && !(e.title + " " + (e.note || "")).toLowerCase().includes(q))
@@ -146,7 +150,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     }
     for (const k in map) map[k] = sortEvents(map[k]);
     return map;
-  }, [events, types, who, query]);
+  }, [events, types, who, query, tz]);
 
   const days = useMemo(
     () =>
@@ -185,6 +189,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       space_id: space.id,
       title: f.title.trim(),
       type: f.type,
+      tz,
       note: f.note.trim() || null,
       place: f.place.trim() || null,
       start_time: f.allDay ? null : f.start || null,
@@ -379,7 +384,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               </div>
             </div>
             <div className="top-right">
-              <Clocks />
+              <Clocks tz={tz} />
               <label className="search">
                 <Search size={16} />
                 <input
@@ -412,6 +417,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               {profileTab === "partner" && partner ? (
                 <PartnerProfile
                   partner={partner}
+                  tz={tz}
                   color={colorOf(partner.user_id)}
                 />
               ) : (
@@ -639,6 +645,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
       {form && (
         <EventForm
+          tz={tz}
           initial={form.initial}
           editing={form.editing}
           members={members}
