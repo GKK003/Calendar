@@ -41,5 +41,5 @@ export default function App() {
   if (session === undefined || (session && profile === undefined)) return <div className="center muted">Loading…</div>
   if (!session) return <Auth />
   if (!profile) return <Setup onDone={loadProfile} />
-  return <Calendar session={session} member={profile.member} space={profile.space} />
+  return <Calendar session={session} member={profile.member} space={profile.space} onProfileChange={loadProfile} />
 }

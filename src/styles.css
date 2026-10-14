@@ -225,3 +225,17 @@ label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--t
   .top-right { flex-direction: column; align-items: stretch; width: 100%; gap: 10px; }
   .top-right .clock { flex: 1; }
 }
+
+/* profile */
+.profile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; max-width: 900px; }
+.pside { display: flex; flex-direction: column; gap: 18px; }
+.pcard { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.pcard h2 { font-size: 22px; font-weight: 500; }
+.pavatar { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 600; color: var(--on-pink); }
+.swatch-wrap { display: flex; flex-direction: column; gap: 8px; }
+.swatch-wrap .lbl { font-size: 13px; color: var(--muted); }
+.swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.swatches button { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--on-pink); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
+.ok { color: var(--green-deep); font-size: 14px; }
+.status { color: var(--green-deep); }
+@media (max-width: 860px) { .profile { grid-template-columns: minmax(0, 1fr); } }

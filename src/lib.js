@@ -69,3 +69,6 @@ export function convertTime(dateStr, time, from, to) {
   const dayShift = Math.round((Date.UTC(+g('year'), +g('month') - 1, +g('day')) - Date.UTC(y, m - 1, d)) / 86400000)
   return { time: `${g('hour')}:${g('minute')}`, dayShift }
 }
+
+// Colors people can pick for their avatar
+export const PALETTE = ['#f6a9c4', '#a9ddc2', '#cdb8f5', '#ffc9a3', '#a8d4f5', '#f7e3a1']

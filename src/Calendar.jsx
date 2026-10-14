@@ -3,14 +3,15 @@ import {
   addDays, addMonths, addYears, eachDayOfInterval, endOfMonth, endOfWeek, format, getDay, isSameMonth, isToday,
   parseISO, startOfMonth, startOfWeek,
 } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock, Trash2 } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, LayoutGrid, LogOut, Plus, Search, Clock, Trash2, User } from 'lucide-react'
 import { supabase } from './supabase.js'
-import { AVATARS, TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
+import { AVATARS, PALETTE, TYPES, greeting, sortEvents, timeLabel, uuid, ymd } from './lib.js'
 import EventForm from './EventForm.jsx'
 import YearView from './YearView.jsx'
 import Clocks from './Clocks.jsx'
+import Profile from './Profile.jsx'
 
-export default function Calendar({ session, member, space }) {
+export default function Calendar({ session, member, space, onProfileChange }) {
   const [cursor, setCursor] = useState(new Date())
   const [selected, setSelected] = useState(ymd(new Date()))
   const [view, setView] = useState('month')
@@ -24,6 +25,11 @@ export default function Calendar({ session, member, space }) {
 
   const year = cursor.getFullYear()
 
+  const loadMembers = useCallback(async () => {
+    const { data } = await supabase.from('members').select('*')
+    if (data) setMembers(data)
+  }, [])
+
   const load = useCallback(async () => {
     const { data } = await supabase
       .from('events').select('*')
@@ -35,7 +41,7 @@ export default function Calendar({ session, member, space }) {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    supabase.from('members').select('*').then(({ data }) => data && setMembers(data))
+    loadMembers()
     const ch = supabase.channel('events-' + space.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `space_id=eq.${space.id}` }, load)
       .subscribe()
@@ -43,7 +49,15 @@ export default function Calendar({ session, member, space }) {
   }, [space.id, load])
 
   const memberById = useMemo(() => Object.fromEntries(members.map((m) => [m.user_id, m])), [members])
-  const colorOf = (id) => AVATARS[Math.max(0, [...members].sort((a, b) => a.user_id.localeCompare(b.user_id)).findIndex((m) => m.user_id === id)) % AVATARS.length]
+  const colorOf = (id) => {
+    const m = members.find((x) => x.user_id === id)
+    if (m && PALETTE.includes(m.color)) return m.color
+    return AVATARS[Math.max(0, [...members].sort((a, b) => a.user_id.localeCompare(b.user_id)).findIndex((x) => x.user_id === id)) % AVATARS.length]
+  }
+  async function profileSaved() {
+    await loadMembers()
+    await onProfileChange?.()
+  }
   const partner = members.find((m) => m.user_id !== member.user_id)
 
   const byDate = useMemo(() => {
@@ -142,6 +156,7 @@ export default function Calendar({ session, member, space }) {
           <div className="logo">V</div>
           <button className={'rail-btn' + (view === 'month' ? ' on' : '')} onClick={() => setView('month')} aria-label="Month view"><CalendarDays size={20} /><span>Month</span></button>
           <button className={'rail-btn' + (view === 'year' ? ' on' : '')} onClick={() => setView('year')} aria-label="Year view"><LayoutGrid size={20} /><span>Year</span></button>
+          <button className={'rail-btn' + (view === 'profile' ? ' on' : '')} onClick={() => setView('profile')} aria-label="Profile"><User size={20} /><span>Profile</span></button>
           <button className="rail-btn warn spacer" onClick={clearAll} aria-label="Clear all events"><Trash2 size={20} /><span>Clear all</span></button>
           <button className="rail-btn" onClick={() => supabase.auth.signOut()} aria-label="Sign out"><LogOut size={20} /><span>Sign out</span></button>
         </nav>
@@ -151,7 +166,7 @@ export default function Calendar({ session, member, space }) {
             <div>
               <h1 className="hello">{greeting()}, {member.display_name}</h1>
               <p className="muted">
-                {partner ? `Shared with ${partner.display_name}` : (
+                {partner ? <>Shared with {partner.display_name}{partner.about && <span className="status"> · {partner.about}</span>}</> : (
                   <>Invite code: <button className="code" onClick={copyCode}>{space.code} <Copy size={12} /> {copied && 'Copied'}</button></>
                 )}
               </p>
@@ -165,6 +180,10 @@ export default function Calendar({ session, member, space }) {
             </div>
           </header>
 
+          {view === 'profile' ? (
+            <Profile session={session} member={memberById[member.user_id] || member} partner={partner} color={colorOf(member.user_id)} onSaved={profileSaved} />
+          ) : (
+            <>
           <div className="filters">
             {Object.entries(TYPES).map(([k, t]) => (
               <button key={k} className={'chip' + (types.has(k) ? ' on' : '')} style={{ '--c': t.color }} onClick={() => toggleType(k)}>
@@ -253,6 +272,8 @@ export default function Calendar({ session, member, space }) {
               </div>
             </aside>
           </div>
+            </>
+          )}
         </main>
       </div>
 
