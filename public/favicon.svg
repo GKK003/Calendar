@@ -1,60 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="paper" x1="54" y1="32" x2="440" y2="484" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF9F4"/>
-      <stop offset="1" stop-color="#F1FAF8"/>
+    <linearGradient id="frame" x1="145" y1="190" x2="367" y2="386" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A99AE7"/>
+      <stop offset="1" stop-color="#75CDBB"/>
     </linearGradient>
-    <linearGradient id="header" x1="117" y1="135" x2="394" y2="224" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#D9F4EE"/>
-      <stop offset=".52" stop-color="#E7F0FF"/>
-      <stop offset="1" stop-color="#F2E6FA"/>
+    <linearGradient id="violet" x1="180" y1="220" x2="286" y2="308" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#AE9BEA"/>
+      <stop offset="1" stop-color="#8D7BD8"/>
     </linearGradient>
-    <linearGradient id="violet" x1="184" y1="217" x2="278" y2="303" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#A899EE"/>
-      <stop offset="1" stop-color="#8073D0"/>
+    <linearGradient id="mint" x1="226" y1="246" x2="338" y2="336" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7AD2C1"/>
+      <stop offset="1" stop-color="#51B9A8"/>
     </linearGradient>
-    <linearGradient id="mint" x1="224" y1="237" x2="331" y2="327" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#75D3C2"/>
-      <stop offset="1" stop-color="#4EB9A8"/>
-    </linearGradient>
-    <filter id="shadow" x="62" y="91" width="388" height="374" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="13"/>
-      <feOffset dy="12"/>
-      <feComponentTransfer><feFuncA type="linear" slope=".13"/></feComponentTransfer>
-      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <clipPath id="card-clip"><rect x="108" y="126" width="296" height="280" rx="42"/></clipPath>
   </defs>
 
-  <!-- Soft, full-bleed background remains safe when an OS applies its own icon mask. -->
-  <rect width="512" height="512" fill="url(#paper)"/>
-  <circle cx="88" cy="106" r="82" fill="#F7E9F2" opacity=".45"/>
-  <circle cx="438" cy="414" r="112" fill="#DDF5EE" opacity=".52"/>
-  <circle cx="408" cy="104" r="5" fill="#F2C7B6"/>
-  <circle cx="101" cy="405" r="4" fill="#C9BDF3"/>
+  <!-- Transparent canvas: only the pastel calendar mark is drawn. -->
+  <g transform="translate(-92.16 -92.16) scale(1.36)">
+  <path d="M145 220h222v122a44 44 0 0 1-44 44H189a44 44 0 0 1-44-44V220Z"
+        fill="none" stroke="url(#frame)" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M145 231h222" fill="none" stroke="#C8EAE4" stroke-width="12" stroke-linecap="round"/>
 
-  <!-- Calendar card and its cool, pearly header. -->
-  <g filter="url(#shadow)">
-    <rect x="108" y="126" width="296" height="280" rx="42" fill="#FFFEFC"/>
-    <g clip-path="url(#card-clip)">
-      <path d="M108 168c0-23.196 18.804-42 42-42h212c23.196 0 42 18.804 42 42v58H108v-58Z" fill="url(#header)"/>
-      <path d="M108 218h296" stroke="#FFFFFF" stroke-opacity=".78" stroke-width="3"/>
-    </g>
-    <rect x="184" y="109" width="24" height="68" rx="12" fill="#A8DCD4" stroke="#FFFEFC" stroke-width="8"/>
-    <rect x="304" y="109" width="24" height="68" rx="12" fill="#C2B4ED" stroke="#FFFEFC" stroke-width="8"/>
+  <!-- Soft, rounded binding loops. -->
+  <path d="M203 153v74" fill="none" stroke="#72C8BA" stroke-width="20" stroke-linecap="round"/>
+  <path d="M309 153v74" fill="none" stroke="#A695E5" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Interwoven arrows form a light, flowing sync symbol. -->
+  <path d="M195 299c-22-25-17-57 7-73 22-15 49-12 71 6" fill="none" stroke="url(#violet)" stroke-width="23" stroke-linecap="round"/>
+  <path d="m269 219 25 18-31 9 6-27Z" fill="#9583DD"/>
+  <path d="M317 255c22 25 17 57-7 73-22 15-49 12-71-6" fill="none" stroke="url(#mint)" stroke-width="23" stroke-linecap="round"/>
+  <path d="m243 330-25-18 31-9-6 27Z" fill="#59BEAD"/>
+
+  <!-- Three tiny dates finish the calendar without filling its transparent face. -->
+  <circle cx="196" cy="357" r="8" fill="#8FD7C9"/>
+  <circle cx="256" cy="357" r="8" fill="#B9ADEB"/>
+  <circle cx="316" cy="357" r="8" fill="#E7BDAE"/>
   </g>
-
-  <!-- Two flowing arrows meet in a gentle, continuous sync loop. -->
-  <path d="M194 294c-21-25-17-57 7-73 22-15 49-12 71 6" fill="none" stroke="url(#violet)" stroke-width="21" stroke-linecap="round"/>
-  <path d="m269 211 24 20-31 7 7-27Z" fill="#8E80D8"/>
-  <path d="M318 247c21 25 17 57-7 73-22 15-49 12-71-6" fill="none" stroke="url(#mint)" stroke-width="21" stroke-linecap="round"/>
-  <path d="m243 330-24-20 31-7-7 27Z" fill="#57B9A9"/>
-
-  <!-- A small shared date row anchors the symbol as a calendar. -->
-  <circle cx="196" cy="367" r="8" fill="#D9F2EC"/>
-  <circle cx="256" cy="367" r="8" fill="#E5E0FA"/>
-  <circle cx="316" cy="367" r="8" fill="#F5DDD5"/>
-
-  <!-- A tiny glint gives the center a warm, memorable point of focus. -->
-  <path d="M256 258c3 10 7 14 17 17-10 3-14 7-17 17-3-10-7-14-17-17 10-3 14-7 17-17Z" fill="#FFFDF9"/>
 </svg>
