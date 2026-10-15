@@ -464,7 +464,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
           <button
             className="rail-btn"
-            onClick={() => supabase.auth.signOut()}
+            onClick={() => confirm("Sign out?") && supabase.auth.signOut()}
             aria-label="Sign out"
           >
             <LogOut size={20} />
