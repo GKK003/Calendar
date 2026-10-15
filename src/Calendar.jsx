@@ -146,13 +146,20 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     const m = members.find((x) => x.user_id === id);
     if (m && PALETTE.includes(m.color)) return m.color;
     // nobody else has this colour yet: hand out the free ones in a fixed order, same on every phone
-    const taken = new Set(members.map((x) => x.color).filter((c) => PALETTE.includes(c)));
+    const taken = new Set(
+      members.map((x) => x.color).filter((c) => PALETTE.includes(c)),
+    );
     const free = PALETTE.filter((c) => !taken.has(c));
     const pool = free.length ? free : AVATARS;
     const loose = members
       .filter((x) => !PALETTE.includes(x.color))
       .sort((a, b) => a.user_id.localeCompare(b.user_id));
-    return pool[Math.max(0, loose.findIndex((x) => x.user_id === id)) % pool.length];
+    return pool[
+      Math.max(
+        0,
+        loose.findIndex((x) => x.user_id === id),
+      ) % pool.length
+    ];
   };
   function openPerson(id) {
     loadMembers();
@@ -305,7 +312,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       if (f.date !== i.date) {
         const { error } = await supabase
           .from("events")
-          .update({ date: f.date, start_time: start, end_time: end, tz: f.zone })
+          .update({
+            date: f.date,
+            start_time: start,
+            end_time: end,
+            tz: f.zone,
+          })
           .eq("id", i.id);
         if (error) return error.message;
       }
@@ -424,20 +436,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     load();
   }
 
-  async function clearAll() {
-    if (!confirm("Delete ALL events for both of you? This cannot be undone."))
-      return;
-    const word = prompt("Type DELETE to confirm");
-    if (word?.trim().toUpperCase() !== "DELETE") return;
-    const { error } = await supabase
-      .from("events")
-      .delete()
-      .eq("space_id", space.id);
-    if (error) return alert("Could not clear events: " + error.message);
-    setEvents([]);
-    load();
-  }
-
   function copyCode() {
     navigator.clipboard?.writeText(space.code);
     setCopied(true);
@@ -508,14 +506,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <User size={20} />
             <span>Profile</span>
           </button>
-          <button
-            className="rail-btn warn spacer"
-            onClick={clearAll}
-            aria-label="Clear all events"
-          >
-            <Trash2 size={20} />
-            <span>Clear all</span>
-          </button>
+
           <button
             className="rail-btn"
             onClick={() => confirm("Sign out?") && supabase.auth.signOut()}
@@ -528,65 +519,69 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
         <main className="main">
           {view !== "chat" && (
-          <header className="top">
-            <div className="hello-row">
-              <Avatar
-                url={me.avatar_url}
-                name={me.display_name}
-                color={colorOf(member.user_id)}
-                size="md"
-              />
-              <div>
-                <h1 className="hello">
-                  {greeting()}, {member.display_name}
-                </h1>
-                <p className="muted">
-                  {others.length > 0 && (
-                    <>
-                      Shared with{" "}
-                      {others.map((o, i) => (
-                        <span key={o.user_id}>
-                          {i > 0 && (i === others.length - 1 ? " and " : ", ")}
-                          <button
-                            className="linklike"
-                            onClick={() => openPerson(o.user_id)}
-                          >
-                            {o.display_name}
-                          </button>
-                        </span>
-                      ))}
-                      {others.length === 1 && others[0].about && (
-                        <span className="status"> · {others[0].about}</span>
-                      )}
-                      {" · "}
-                    </>
-                  )}
-                  Invite code:{" "}
-                  <button className="code" onClick={copyCode}>
-                    {space.code} <Copy size={12} /> {copied && "Copied"}
-                  </button>
-                </p>
-              </div>
-            </div>
-            <div className="top-right">
-              <Clocks tz={tz} />
-              {(view === "month" || view === "year") && (
-              <label className="search">
-                <Search size={16} />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search events"
+            <header className="top">
+              <div className="hello-row">
+                <Avatar
+                  url={me.avatar_url}
+                  name={me.display_name}
+                  color={colorOf(member.user_id)}
+                  size="md"
                 />
-              </label>
-              )}
-            </div>
-          </header>
+                <div>
+                  <h1 className="hello">
+                    {greeting()}, {member.display_name}
+                  </h1>
+                  <p className="muted">
+                    {others.length > 0 && (
+                      <>
+                        Shared with{" "}
+                        {others.map((o, i) => (
+                          <span key={o.user_id}>
+                            {i > 0 &&
+                              (i === others.length - 1 ? " and " : ", ")}
+                            <button
+                              className="linklike"
+                              onClick={() => openPerson(o.user_id)}
+                            >
+                              {o.display_name}
+                            </button>
+                          </span>
+                        ))}
+                        {others.length === 1 && others[0].about && (
+                          <span className="status"> · {others[0].about}</span>
+                        )}
+                        {" · "}
+                      </>
+                    )}
+                    Invite code:{" "}
+                    <button className="code" onClick={copyCode}>
+                      {space.code} <Copy size={12} /> {copied && "Copied"}
+                    </button>
+                  </p>
+                </div>
+              </div>
+              <div className="top-right">
+                <Clocks tz={tz} />
+                {(view === "month" || view === "year") && (
+                  <label className="search">
+                    <Search size={16} />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search events"
+                    />
+                  </label>
+                )}
+              </div>
+            </header>
           )}
 
           {push.state === "off" && !pushHidden && view !== "chat" && (
             <div className="push-banner">
-              <span>Get notified about messages and calls, even when the app is closed.</span>
+              <span>
+                Get notified about messages and calls, even when the app is
+                closed.
+              </span>
               <button className="btn primary sm" onClick={push.enable}>
                 Turn on
               </button>
@@ -765,7 +760,9 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         {days.map((d) => {
                           const k = ymd(d);
                           const list = byDate[k] || [];
-                          const hasSpecial = list.some((e) => e.type === "special");
+                          const hasSpecial = list.some(
+                            (e) => e.type === "special",
+                          );
                           return (
                             <button
                               key={k}
@@ -787,7 +784,9 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                                 {list.slice(0, 2).map((e) => (
                                   <em
                                     key={e.id}
-                                    className={e.type === "special" ? "sd-em" : undefined}
+                                    className={
+                                      e.type === "special" ? "sd-em" : undefined
+                                    }
                                     style={{ "--c": TYPES[e.type].color }}
                                   >
                                     {e.title}
@@ -868,7 +867,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                             {e.origin && (
                               <span className="muted small note">
                                 Set as {e.origin.start_time}
-                                {e.origin.end_time && ` – ${e.origin.end_time}`}{" "}
+                                {e.origin.end_time &&
+                                  ` – ${e.origin.end_time}`}{" "}
                                 {zoneLabel(e.origin.tz)}
                               </span>
                             )}
@@ -923,7 +923,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         color={callPeer ? colorOf(callPeer.user_id) : undefined}
         name={
           callPeer
-            ? chat.settings.nicknames?.[callPeer.user_id] || callPeer.display_name
+            ? chat.settings.nicknames?.[callPeer.user_id] ||
+              callPeer.display_name
             : ""
         }
       />
