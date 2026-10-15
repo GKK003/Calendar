@@ -448,7 +448,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     <div className="app">
       <div className={"shell" + (view === "chat" ? " chat-mode" : "")}>
         <nav className="rail">
-          <div className="logo">V</div>
+          <div className="logo">S</div>
           <button
             className={"rail-btn" + (view === "today" ? " on" : "")}
             onClick={() => setView("today")}
