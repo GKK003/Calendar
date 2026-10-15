@@ -10,9 +10,11 @@ export default function usePosts(space, userId) {
   const [posts, setPosts] = useState([])
   const [replies, setReplies] = useState([])
   const [urls, setUrls] = useState({})
+  const [gallery, setGallery] = useState([])
   const [seen, setSeen] = useState(() => localStorage.getItem(seenKey) || '')
   const seq = useRef(0)
   const signed = useRef({})
+  const signedAt = useRef(Date.now())
 
   const load = useCallback(async () => {
     const id = ++seq.current
@@ -32,13 +34,31 @@ export default function usePosts(space, userId) {
       if (res.error || id !== seq.current) return
       r = res.data
     }
+    // every photo ever posted, newest first (the Gallery page)
+    const g = await supabase
+      .from('posts')
+      .select('id,user_id,photos,created_at')
+      .order('created_at', { ascending: false })
+      .limit(1000)
+    if (id !== seq.current) return
+    const shots = (g.data || []).flatMap((x) =>
+      (x.photos || []).map((path) => ({ path, postId: x.id, user_id: x.user_id, created_at: x.created_at })),
+    )
     setPosts(p)
     setReplies(r)
-    const missing = p.flatMap((x) => x.photos || []).filter((path) => !signed.current[path])
+    setGallery(shots)
+    // signed links last 24 h; renew them before they run out
+    if (Date.now() - signedAt.current > 20 * 3600 * 1000) {
+      signed.current = {}
+      signedAt.current = Date.now()
+    }
+    const wanted = new Set([...p.flatMap((x) => x.photos || []), ...shots.map((x) => x.path)])
+    const missing = [...wanted].filter((path) => !signed.current[path])
     if (!missing.length) return
-    const { data } = await supabase.storage.from(BUCKET).createSignedUrls(missing, 86400)
-    if (!data) return
-    for (const item of data) if (item.signedUrl) signed.current[item.path] = item.signedUrl
+    for (let i = 0; i < missing.length; i += 100) {
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrls(missing.slice(i, i + 100), 86400)
+      for (const item of data || []) if (item.signedUrl) signed.current[item.path] = item.signedUrl
+    }
     setUrls({ ...signed.current })
   }, [])
 
@@ -116,5 +136,5 @@ export default function usePosts(space, userId) {
     setSeen(latestOther)
   }, [latestOther, seen, seenKey])
 
-  return { posts, replies, urls, unread, markSeen, add, remove, reply, removeReply }
+  return { posts, replies, urls, gallery, unread, markSeen, add, remove, reply, removeReply }
 }

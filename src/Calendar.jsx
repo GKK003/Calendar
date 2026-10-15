@@ -30,7 +30,7 @@ import {
   MapPin,
   Sparkles,
   Home,
-  MessageCircle,
+  Images,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import {
@@ -55,7 +55,7 @@ import Profile from "./Profile.jsx";
 import Avatar from "./Avatar.jsx";
 import PartnerProfile from "./PartnerProfile.jsx";
 import Dashboard from "./Dashboard.jsx";
-import Posts from "./Posts.jsx";
+import Gallery from "./Gallery.jsx";
 import usePosts from "./usePosts.js";
 import "./special.css";
 
@@ -154,7 +154,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   );
 
   useEffect(() => {
-    if (view === "posts") markSeen();
+    if (view === "today") markSeen();
   }, [view, markSeen]);
 
   const byDate = useMemo(() => {
@@ -405,7 +405,10 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             onClick={() => setView("today")}
             aria-label="Today"
           >
-            <Home size={20} />
+            <span className="rail-ico">
+              <Home size={20} />
+              {postsApi.unread && view !== "today" && <i className="dot" />}
+            </span>
             <span>Today</span>
           </button>
           <button
@@ -425,15 +428,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Year</span>
           </button>
           <button
-            className={"rail-btn" + (view === "posts" ? " on" : "")}
-            onClick={() => setView("posts")}
-            aria-label="Posts"
+            className={"rail-btn" + (view === "gallery" ? " on" : "")}
+            onClick={() => setView("gallery")}
+            aria-label="Gallery"
           >
-            <span className="rail-ico">
-              <MessageCircle size={20} />
-              {postsApi.unread && view !== "posts" && <i className="dot" />}
-            </span>
-            <span>Posts</span>
+            <Images size={20} />
+            <span>Gallery</span>
           </button>
           <button
             className={"rail-btn" + (view === "profile" ? " on" : "")}
@@ -517,20 +517,18 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               events={localEvents}
               colorOf={colorOf}
               memberById={memberById}
-              posts={postsApi.posts}
-              replies={postsApi.replies}
-              urls={postsApi.urls}
+              api={postsApi}
               onOpenEvent={(e) => setForm({ initial: e, editing: true })}
               onNewEvent={() => openNew(ymd(new Date()))}
-              onOpenPosts={() => setView("posts")}
               onOpenCalendar={() => setView("month")}
             />
-          ) : view === "posts" ? (
-            <Posts
-              api={postsApi}
+          ) : view === "gallery" ? (
+            <Gallery
+              shots={postsApi.gallery}
+              urls={postsApi.urls}
               me={me}
+              partner={partner}
               memberById={memberById}
-              colorOf={colorOf}
             />
           ) : view === "profile" ? (
             <>
@@ -799,7 +797,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </main>
       </div>
 
-      {view !== "posts" && view !== "profile" && (
+      {view !== "gallery" && view !== "profile" && (
         <button
           className="fab"
           onClick={() => openNew(view === "today" ? ymd(new Date()) : selected)}

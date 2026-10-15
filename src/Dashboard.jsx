@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { addDays, format, parseISO } from 'date-fns'
-import { MessageCircle, Plus, Sparkles } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
+import { CalendarDays, MessageCircle, Plus, Sparkles } from 'lucide-react'
 import './dashboard.css'
+import './gallery.css'
 import Avatar from './Avatar.jsx'
+import Lightbox from './Lightbox.jsx'
+import { Composer, PostCard } from './Posts.jsx'
 import { TYPES, clockIn, greeting, sortEvents, timeLabel, ymd, zoneLabel, zoneOfCity } from './lib.js'
 
 function PersonClock({ person, color, isMe }) {
@@ -49,25 +52,42 @@ export default function Dashboard({
   events,
   colorOf,
   memberById,
-  posts,
-  replies,
-  urls,
+  api,
   onOpenEvent,
   onNewEvent,
-  onOpenPosts,
   onOpenCalendar,
 }) {
+  const [zoom, setZoom] = useState(null)
+  const [, tick] = useState(0)
   const today = ymd(new Date())
-  const weekEnd = ymd(addDays(new Date(), 7))
+
+  // A new day starts at 00:00: re-render then (and when the phone wakes up) so yesterday's posts disappear
+  useEffect(() => {
+    const n = new Date()
+    const next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 1)
+    const t = setTimeout(() => tick((x) => x + 1), next - n)
+    const wake = () => document.visibilityState === 'visible' && tick((x) => x + 1)
+    document.addEventListener('visibilitychange', wake)
+    return () => {
+      clearTimeout(t)
+      document.removeEventListener('visibilitychange', wake)
+    }
+  }, [today])
+
   const todays = events.filter((e) => e.date === today)
   const mine = sortEvents(todays.filter((e) => e.user_id === me.user_id))
   const theirs = partner ? sortEvents(todays.filter((e) => e.user_id === partner.user_id)) : []
   const specialToday = todays.filter((e) => e.type === 'special')
-  const upcoming = events
-    .filter((e) => e.date > today && e.date <= weekEnd)
-    .sort((a, b) => a.date.localeCompare(b.date) || (a.start_time || '').localeCompare(b.start_time || ''))
-    .slice(0, 10)
-  const latest = posts.slice(0, 3)
+
+  const todayPosts = api.posts.filter((p) => ymd(new Date(p.created_at)) === today)
+  const byPost = {}
+  for (const r of api.replies) (byPost[r.post_id] ||= []).push(r)
+
+  function newPost() {
+    const box = document.getElementById('todays-posts')
+    box?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    box?.querySelector('textarea')?.focus({ preventScroll: true })
+  }
 
   return (
     <div className="dash">
@@ -83,8 +103,11 @@ export default function Dashboard({
             <button className="btn primary sm" onClick={() => onNewEvent()}>
               <Plus size={16} /> Add event
             </button>
-            <button className="btn ghost sm" onClick={onOpenPosts}>
+            <button className="btn ghost sm" onClick={newPost}>
               <MessageCircle size={16} /> New post
+            </button>
+            <button className="btn ghost sm" onClick={onOpenCalendar}>
+              <CalendarDays size={16} /> Calendar
             </button>
           </div>
         </div>
@@ -124,48 +147,40 @@ export default function Dashboard({
         </section>
       )}
 
-      <section className="card dpanel dnext">
+      <section className="dposts" id="todays-posts">
         <div className="dpanel-head">
-          <h2>Coming up</h2>
-          <button className="linklike" onClick={onOpenCalendar}>Open calendar</button>
+          <h2>Today's posts</h2>
+          <small className="muted">Clears at midnight · photos are kept in the Gallery</small>
         </div>
-        <div className="dlist">
-          {upcoming.length === 0 && <p className="empty">Nothing in the next 7 days.</p>}
-          {upcoming.map((e) => {
-            const owner = memberById[e.user_id]
-            return <EventRow key={e.id} e={e} owner={owner} color={colorOf(e.user_id)} showDate onOpen={onOpenEvent} />
-          })}
+        <Composer me={me} color={colorOf(me.user_id)} onPost={api.add} />
+        <div className="dfeed">
+          {todayPosts.length === 0 && <p className="empty">Nothing yet today. Check in or share a photo.</p>}
+          {todayPosts.map((p) => (
+            <PostCard
+              key={p.id}
+              post={p}
+              owner={memberById[p.user_id]}
+              color={colorOf(p.user_id)}
+              replies={byPost[p.id] || []}
+              urls={api.urls}
+              me={me}
+              memberById={memberById}
+              colorOf={colorOf}
+              api={api}
+              onZoom={(items, index) => setZoom({ items, index })}
+            />
+          ))}
         </div>
       </section>
 
-      <section className="card dpanel dposts">
-        <div className="dpanel-head">
-          <h2>Latest posts</h2>
-          <button className="linklike" onClick={onOpenPosts}>Open posts</button>
-        </div>
-        <div className="dpost-list">
-          {latest.length === 0 && <p className="empty">No posts yet. Check in or share a photo.</p>}
-          {latest.map((p) => {
-            const owner = memberById[p.user_id]
-            const thumb = urls[(p.photos || [])[0]]
-            const count = replies.filter((r) => r.post_id === p.id).length
-            return (
-              <button className="dpost" key={p.id} onClick={onOpenPosts}>
-                <Avatar url={owner?.avatar_url} name={owner?.display_name || '?'} color={colorOf(p.user_id)} />
-                <span className="dpost-main">
-                  <strong>{owner?.display_name || 'Someone'}</strong>
-                  <small className="muted">
-                    {p.checkin ? `Checked in: ${p.checkin}${p.body ? ' · ' : ''}` : ''}
-                    {p.body || (!p.checkin && 'Shared a photo')}
-                  </small>
-                </span>
-                {count > 0 && <span className="dcount">{count} {count === 1 ? 'reply' : 'replies'}</span>}
-                {thumb && <img src={thumb} alt="" />}
-              </button>
-            )
-          })}
-        </div>
-      </section>
+      {zoom && (
+        <Lightbox
+          items={zoom.items}
+          index={zoom.index}
+          onIndex={(index) => setZoom({ ...zoom, index })}
+          onClose={() => setZoom(null)}
+        />
+      )}
     </div>
   )
 }

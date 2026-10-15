@@ -10,7 +10,7 @@ const MAX_PHOTOS = 4
 
 const ago = (iso) => formatDistanceToNow(parseISO(iso), { addSuffix: true })
 
-function Composer({ me, color, onPost }) {
+export function Composer({ me, color, onPost }) {
   const [body, setBody] = useState('')
   const [checkin, setCheckin] = useState(null)
   const [place, setPlace] = useState('')
@@ -122,7 +122,7 @@ function Composer({ me, color, onPost }) {
   )
 }
 
-function PostCard({ post, owner, color, replies, urls, me, memberById, colorOf, api, onZoom }) {
+export function PostCard({ post, owner, color, replies, urls, me, memberById, colorOf, api, onZoom }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const mine = post.user_id === me.user_id
@@ -186,8 +186,17 @@ function PostCard({ post, owner, color, replies, urls, me, memberById, colorOf, 
 
       {photos.length > 0 && (
         <div className={'pgrid n' + photos.length}>
-          {photos.map((u) => (
-            <button key={u} onClick={() => onZoom(u)} aria-label="View photo">
+          {photos.map((u, i) => (
+            <button
+              key={u}
+              onClick={() =>
+                onZoom(
+                  photos.map((x) => ({ url: x, caption: `${owner?.display_name || 'Someone'} · ${ago(post.created_at)}` })),
+                  i,
+                )
+              }
+              aria-label="View photo"
+            >
               <img src={u} alt="" loading="lazy" />
             </button>
           ))}
@@ -228,42 +237,5 @@ function PostCard({ post, owner, color, replies, urls, me, memberById, colorOf, 
         </form>
       </div>
     </article>
-  )
-}
-
-export default function Posts({ api, me, memberById, colorOf }) {
-  const [zoom, setZoom] = useState(null)
-  const byPost = {}
-  for (const r of api.replies) (byPost[r.post_id] ||= []).push(r)
-
-  return (
-    <div className="posts">
-      <Composer me={me} color={colorOf(me.user_id)} onPost={api.add} />
-
-      <div className="feed">
-        {api.posts.length === 0 && <p className="empty">No posts yet. Check in or share a photo.</p>}
-        {api.posts.map((p) => (
-          <PostCard
-            key={p.id}
-            post={p}
-            owner={memberById[p.user_id]}
-            color={colorOf(p.user_id)}
-            replies={byPost[p.id] || []}
-            urls={api.urls}
-            me={me}
-            memberById={memberById}
-            colorOf={colorOf}
-            api={api}
-            onZoom={setZoom}
-          />
-        ))}
-      </div>
-
-      {zoom && (
-        <div className="overlay" onClick={() => setZoom(null)}>
-          <img className="plight" src={zoom} alt="" />
-        </div>
-      )}
-    </div>
   )
 }
