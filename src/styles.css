@@ -1200,7 +1200,7 @@ label.check {
 .brutal-menu-trigger {
   position: fixed;
   z-index: 102;
-  top: 22px;
+  top: 10px;
   left: 22px;
   display: flex;
   align-items: center;
@@ -1217,61 +1217,256 @@ label.check {
   font-weight: 900;
   letter-spacing: 2px;
   cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
-.brutal-menu-trigger:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--pink-deep); }
-.brutal-menu-trigger:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--pink-deep); }
-.brutal-menu-trigger-icon { display: grid; place-items: center; width: 32px; height: 32px; background: var(--pink); color: #25212a; }
-.brutal-menu-trigger.is-open { background: var(--pink); color: #25212a; box-shadow: 5px 5px 0 #25212a; }
-.brutal-menu-trigger.is-open .brutal-menu-trigger-icon { background: #25212a; color: white; }
-.brutal-menu-scrim { position: fixed; inset: 0; z-index: 98; border: 0; padding: 0; background: rgba(24,17,25,.48); backdrop-filter: blur(5px); animation: brutal-fade .18s ease both; cursor: default; }
+.brutal-menu-trigger:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--pink-deep);
+}
+.brutal-menu-trigger:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--pink-deep);
+}
+.brutal-menu-trigger-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: var(--pink);
+  color: #25212a;
+}
+.brutal-menu-trigger.is-open {
+  background: var(--pink);
+  color: #25212a;
+  box-shadow: 5px 5px 0 #25212a;
+}
+.brutal-menu-trigger.is-open .brutal-menu-trigger-icon {
+  background: #25212a;
+  color: white;
+}
+.brutal-menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  border: 0;
+  padding: 0;
+  background: rgba(24, 17, 25, 0.48);
+  backdrop-filter: blur(5px);
+  animation: brutal-fade 0.18s ease both;
+  cursor: default;
+}
 .rail {
   position: fixed !important;
   z-index: 101 !important;
   inset: 0 auto 0 0 !important;
   width: min(360px, calc(100vw - 38px)) !important;
   height: 100dvh;
-  padding: 126px 24px 28px !important;
+  padding: clamp(82px, 14dvh, 116px) 24px clamp(12px, 2dvh, 24px) !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
   justify-content: flex-start !important;
-  gap: 9px !important;
-  overflow-y: auto;
+  gap: clamp(2px, 0.9dvh, 9px) !important;
+  overflow: hidden !important;
   background: #fff9fb !important;
   border: 0 !important;
   border-right: 3px solid #25212a !important;
   border-radius: 0 8px 8px 0 !important;
-  box-shadow: 14px 0 0 rgba(209,96,139,.24), 24px 0 70px rgba(22,12,22,.2);
+  box-shadow:
+    14px 0 0 rgba(209, 96, 139, 0.24),
+    24px 0 70px rgba(22, 12, 22, 0.2);
   transform: translateX(calc(-100% - 30px));
   visibility: hidden;
-  transition: transform .32s cubic-bezier(.2,.8,.2,1), visibility .32s;
+  transition:
+    transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0.32s;
 }
-.rail.menu-open { transform: translateX(0); visibility: visible; }
-.rail .logo { display: none !important; }
-.rail::before { content: "YOUR SPACE / YOUR RULES"; position: absolute; top: 82px; left: 24px; color: #786a75; font-size: 9px; font-weight: 900; letter-spacing: 1.8px; }
-.rail::after { content: "NAVIGATION INDEX — 01 / 08"; margin-top: auto; padding-top: 18px; border-top: 1px solid #e8dce2; color: #8e7e89; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; }
-.rail .rail-btn { width: 100% !important; min-height: 49px; height: auto !important; flex: none !important; display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: flex-start !important; gap: 14px !important; padding: 12px 14px !important; border: 1px solid transparent; border-radius: 3px !important; background: transparent !important; color: #38303a !important; box-shadow: none !important; text-align: left; font-size: 14px; font-weight: 750; transition: background .16s, border-color .16s, transform .16s; }
-.rail .rail-btn > svg, .rail .rail-btn .rail-ico { width: 23px; min-width: 23px; display: grid; place-items: center; }
-.rail .rail-btn span { display: inline !important; font-size: 14px !important; }
-.rail .rail-btn:hover { transform: translateX(4px); background: #f9e7ef !important; border-color: #e9c5d5; }
-.rail .rail-btn.on { background: #25212a !important; color: #fff !important; border-color: #25212a; box-shadow: 4px 4px 0 var(--pink) !important; }
-.rail .rail-btn.on svg { color: var(--pink); }
-.rail .rail-btn .dot { border: 2px solid #fff9fb; }
-.shell { padding-left: 26px; }
-.main { padding-top: 42px; }
-@keyframes brutal-fade { from { opacity: 0; } to { opacity: 1; } }
+.rail.menu-open {
+  transform: translateX(0);
+  visibility: visible;
+}
+.rail .logo {
+  display: none !important;
+}
+.rail::before {
+  content: "YOUR SPACE / YOUR RULES";
+  position: absolute;
+  top: clamp(62px, 10dvh, 82px);
+  left: 24px;
+  color: #786a75;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+}
+.rail::after {
+  content: "NAVIGATION INDEX — 01 / 08";
+  margin-top: auto;
+  flex-shrink: 0;
+  padding-top: clamp(6px, 1.5dvh, 18px);
+  border-top: 1px solid #e8dce2;
+  color: #8e7e89;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+.rail .rail-btn {
+  width: 100% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  flex: 0 1 auto !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 14px !important;
+  padding: clamp(5px, 1.2dvh, 12px) 14px !important;
+  border: 1px solid transparent;
+  border-radius: 3px !important;
+  background: transparent !important;
+  color: #38303a !important;
+  box-shadow: none !important;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 750;
+  transition:
+    background 0.16s,
+    border-color 0.16s,
+    transform 0.16s;
+}
+.rail .rail-btn > svg,
+.rail .rail-btn .rail-ico {
+  width: 23px;
+  min-width: 23px;
+  display: grid;
+  place-items: center;
+}
+.rail .rail-btn span {
+  display: inline !important;
+  font-size: 14px !important;
+}
+.rail .rail-btn:hover {
+  transform: translateX(4px);
+  background: #f9e7ef !important;
+  border-color: #e9c5d5;
+}
+.rail .rail-btn.on {
+  background: #25212a !important;
+  color: #fff !important;
+  border-color: #25212a;
+  box-shadow: 4px 4px 0 var(--pink) !important;
+}
+.rail .rail-btn.on svg {
+  color: var(--pink);
+}
+.rail .rail-btn .dot {
+  border: 2px solid #fff9fb;
+}
+.shell {
+  padding-left: 26px;
+}
+.main {
+  padding-top: 42px;
+}
+@keyframes brutal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @media (max-width: 860px) {
-  .app { padding: 12px; }
-  .shell { padding: 18px 12px; min-height: calc(100dvh - 24px); }
-  .main { padding-top: 48px; }
-  .brutal-menu-trigger { top: 14px; left: 14px; min-height: 46px; padding: 6px 12px 6px 6px; }
-  .brutal-menu-trigger-icon { width: 30px; height: 30px; }
-  .rail { padding: 112px 18px 22px !important; }
-  .rail::before { top: 76px; left: 18px; }
-  .fab { bottom: calc(20px + env(safe-area-inset-bottom)) !important; }
-  .chat-mode .main { padding-top: 48px; }
+  .app {
+    padding: 12px;
+  }
+  .shell {
+    padding: 18px 12px;
+    min-height: calc(100dvh - 24px);
+  }
+  .main {
+    padding-top: 48px;
+  }
+  .brutal-menu-trigger {
+    top: 14px;
+    left: 14px;
+    min-height: 46px;
+    padding: 6px 12px 6px 6px;
+  }
+  .brutal-menu-trigger-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .rail {
+    padding: clamp(78px, 13dvh, 105px) 18px clamp(10px, 2dvh, 22px) !important;
+  }
+  .rail::before {
+    top: clamp(58px, 9dvh, 76px);
+    left: 18px;
+  }
+  .fab {
+    bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+  }
+  .chat-mode .main {
+    padding-top: 48px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rail, .brutal-menu-trigger, .brutal-menu-scrim, .rail .rail-btn { transition: none !important; animation: none !important; }
+  .rail,
+  .brutal-menu-trigger,
+  .brutal-menu-scrim,
+  .rail .rail-btn {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Short screens: preserve all links without internal scrolling. */
+@media (max-height: 680px) {
+  .rail {
+    gap: 2px !important;
+    padding-top: 78px !important;
+    padding-bottom: 10px !important;
+  }
+  .rail::before {
+    top: 61px !important;
+  }
+  .rail .rail-btn {
+    padding-block: 5px !important;
+    font-size: 13px;
+  }
+  .rail .rail-btn span {
+    font-size: 13px !important;
+  }
+  .rail::after {
+    padding-top: 6px;
+  }
+}
+@media (max-height: 520px) {
+  .brutal-menu-trigger {
+    top: 8px;
+    min-height: 38px;
+    padding: 3px 9px 3px 3px;
+  }
+  .brutal-menu-trigger-icon {
+    width: 28px;
+    height: 28px;
+  }
+  .rail {
+    padding-top: 55px !important;
+    padding-bottom: 6px !important;
+    gap: 0 !important;
+  }
+  .rail::before {
+    display: none;
+  }
+  .rail .rail-btn {
+    padding-block: 3px !important;
+  }
+  .rail::after {
+    font-size: 8px;
+    padding-top: 4px;
+  }
 }
