@@ -34,6 +34,8 @@ import {
   MessageCircle,
   Film,
   Gamepad2,
+  Menu,
+  X,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import {
@@ -71,6 +73,7 @@ import usePosts from "./usePosts.js";
 import "./special.css";
 
 export default function Calendar({ session, member, space, onProfileChange }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [cursor, setCursor] = useState(new Date());
   const [selected, setSelected] = useState(ymd(new Date()));
   const [view, setView] = useView();
@@ -456,7 +459,19 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           "shell" + (view === "chat" || view === "cinema" || view === "games" ? " chat-mode" : "")
         }
       >
-        <nav className="rail">
+        <button
+          type="button"
+          className={`brutal-menu-trigger${menuOpen ? " is-open" : ""}`}
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          aria-controls="main-navigation"
+        >
+          <span className="brutal-menu-trigger-icon">{menuOpen ? <X size={23} strokeWidth={2.5} /> : <Menu size={23} strokeWidth={2.5} />}</span>
+          <span className="brutal-menu-trigger-label">MENU</span>
+        </button>
+        {menuOpen && <button className="brutal-menu-scrim" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}
+        <nav id="main-navigation" className={`rail${menuOpen ? " menu-open" : ""}`} onClick={() => setMenuOpen(false)} aria-label="Main navigation">
           <div className="logo">S</div>
           <button
             className={"rail-btn" + (view === "today" ? " on" : "")}
