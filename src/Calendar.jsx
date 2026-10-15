@@ -394,20 +394,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     load();
   }
 
-  async function clearAll() {
-    if (!confirm("Delete ALL events for both of you? This cannot be undone."))
-      return;
-    const word = prompt("Type DELETE to confirm");
-    if (word?.trim().toUpperCase() !== "DELETE") return;
-    const { error } = await supabase
-      .from("events")
-      .delete()
-      .eq("space_id", space.id);
-    if (error) return alert("Could not clear events: " + error.message);
-    setEvents([]);
-    load();
-  }
-
   function copyCode() {
     navigator.clipboard?.writeText(space.code);
     setCopied(true);
@@ -475,14 +461,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <User size={20} />
             <span>Profile</span>
           </button>
-          <button
-            className="rail-btn warn spacer"
-            onClick={clearAll}
-            aria-label="Clear all events"
-          >
-            <Trash2 size={20} />
-            <span>Clear all</span>
-          </button>
+
           <button
             className="rail-btn"
             onClick={() => supabase.auth.signOut()}
