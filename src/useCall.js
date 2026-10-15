@@ -16,9 +16,10 @@ function iceServers() {
   return list
 }
 
-const IDLE = { status: 'idle', video: false, incoming: false, startedAt: 0 }
+const IDLE = { status: 'idle', video: false, incoming: false, startedAt: 0, peerId: null }
 
-// Voice and video calls between the two of you (WebRTC; the signals go through Supabase Realtime)
+// One-to-one voice and video calls (WebRTC; the signals go through Supabase Realtime).
+// Every signal says who it is from and who it is for, so three or more people can share the app.
 export default function useCall({ space, userId, calls }) {
   const [call, setCall] = useState(IDLE)
   const [local, setLocal] = useState(null)
@@ -42,7 +43,7 @@ export default function useCall({ space, userId, calls }) {
   }
 
   const send = (type, data = {}) =>
-    chan.current?.send({ type: 'broadcast', event: 'sig', payload: { from: userId, type, ...data } })
+    chan.current?.send({ type: 'broadcast', event: 'sig', payload: { from: userId, to: st.current.peerId, type, ...data } })
 
   const cleanup = useCallback(() => {
     clearTimeout(ringTimer.current)
@@ -107,17 +108,17 @@ export default function useCall({ space, userId, calls }) {
     for (const c of ice.current.splice(0)) await pc.current?.addIceCandidate(c).catch(() => {})
   }
 
-  async function start(video) {
-    if (st.current.status !== 'idle') return
+  async function start(video, to) {
+    if (st.current.status !== 'idle' || !to) return
     if (!window.RTCPeerConnection || !navigator.mediaDevices) {
       setError('Calls need a secure (https) page and a modern browser.')
       return
     }
     setError('')
-    put({ status: 'calling', video, incoming: false, startedAt: 0 })
+    put({ status: 'calling', video, incoming: false, startedAt: 0, peerId: to })
     if (!(await getMedia(video))) return cleanup()
     send('invite', { video })
-    rowId.current = logRef.current?.begin(video) || null
+    rowId.current = logRef.current?.begin(video, to) || null
     ringTimer.current = setTimeout(() => {
       send('cancel')
       finish('missed')
@@ -156,12 +157,17 @@ export default function useCall({ space, userId, calls }) {
     const ch = supabase.channel('call-' + space.id, { config: { broadcast: { self: false } } })
     ch.on('broadcast', { event: 'sig' }, async ({ payload: p }) => {
       if (p.from === userId) return
+      if (p.to && p.to !== userId) return // meant for somebody else
       const c = st.current
       try {
         if (p.type === 'invite') {
-          if (c.status === 'ringing' && c.incoming) return
-          if (c.status !== 'idle') return ch.send({ type: 'broadcast', event: 'sig', payload: { from: userId, type: 'busy' } })
-          put({ status: 'ringing', video: !!p.video, incoming: true, startedAt: 0 })
+          if (c.status !== 'idle') {
+            if (c.status === 'ringing' && c.peerId === p.from) return
+            return ch.send({ type: 'broadcast', event: 'sig', payload: { from: userId, to: p.from, type: 'busy' } })
+          }
+          put({ status: 'ringing', video: !!p.video, incoming: true, startedAt: 0, peerId: p.from })
+        } else if (c.status === 'idle' || p.from !== c.peerId) {
+          return // not part of my call
         } else if (p.type === 'cancel' && c.status === 'ringing') {
           cleanup()
         } else if (p.type === 'busy' && c.status === 'calling') {
@@ -214,15 +220,16 @@ export default function useCall({ space, userId, calls }) {
       const since = new Date(Date.now() - 40000).toISOString()
       const { data } = await supabase
         .from('messages')
-        .select('id, meta')
+        .select('id, user_id, meta')
         .eq('kind', 'call')
+        .eq('to_user', userId)
         .neq('user_id', userId)
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(1)
       const m = data?.[0]
       if (m && m.meta?.status === 'ringing' && st.current.status === 'idle') {
-        put({ status: 'ringing', video: !!m.meta.video, incoming: true, startedAt: 0 })
+        put({ status: 'ringing', video: !!m.meta.video, incoming: true, startedAt: 0, peerId: m.user_id })
       }
     }
     checkPending()

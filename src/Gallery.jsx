@@ -3,7 +3,7 @@ import { format, parseISO } from 'date-fns'
 import './gallery.css'
 import Lightbox from './Lightbox.jsx'
 
-export default function Gallery({ shots, urls, me, partner, memberById }) {
+export default function Gallery({ shots, urls, me, others, memberById }) {
   const [who, setWho] = useState('all')
   const [open, setOpen] = useState(null)
 
@@ -33,13 +33,15 @@ export default function Gallery({ shots, urls, me, partner, memberById }) {
             {list.length} {list.length === 1 ? 'photo' : 'photos'} from your posts, saved here automatically
           </p>
         </div>
-        {partner && (
+        {others.length > 0 && (
           <div className="seg tiny">
-            <button className={who === 'all' ? 'on' : ''} onClick={() => setWho('all')}>Both</button>
+            <button className={who === 'all' ? 'on' : ''} onClick={() => setWho('all')}>Everyone</button>
             <button className={who === me.user_id ? 'on' : ''} onClick={() => setWho(me.user_id)}>Me</button>
-            <button className={who === partner.user_id ? 'on' : ''} onClick={() => setWho(partner.user_id)}>
-              {partner.display_name}
-            </button>
+            {others.map((o) => (
+              <button key={o.user_id} className={who === o.user_id ? 'on' : ''} onClick={() => setWho(o.user_id)}>
+                {o.display_name}
+              </button>
+            ))}
           </div>
         )}
       </div>

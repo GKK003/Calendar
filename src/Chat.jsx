@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import {
-  ArrowDown, Bell, Camera, Check, CheckCheck, Copy, CornerUpLeft, Mic, Pencil, Phone, PhoneMissed,
-  Play, Pause, Search, Send, Settings, Smile, Trash2, Video, X,
+  ArrowDown, Bell, Camera, ChevronLeft, Check, CheckCheck, Copy, CornerUpLeft, Mic, Pencil, Phone, PhoneMissed,
+  Play, Pause, Search, Send, Settings, Smile, Trash2, Users, Video, X,
 } from 'lucide-react'
 import './chat.css'
 import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { EMOJI, QUICK } from './emoji.js'
-import { preview } from './useChat.js'
+import { GROUP, preview } from './useChat.js'
 
 const COLORS = ['#f6a9c4', '#e0679a', '#a9ddc2', '#3d9970', '#cdb8f5', '#7c5cd6', '#a8d4f5', '#2f7fd1', '#ffc9a3', '#f2994a', '#f7e3a1', '#2d2832']
 const MAX_PHOTOS = 6
@@ -83,6 +83,14 @@ function Voice({ url, seconds }) {
   )
 }
 
+function GroupAvatar({ size = 'md' }) {
+  return (
+    <span className={'avatar gav ' + size}>
+      <Users size={size === 'md' ? 22 : 16} />
+    </span>
+  )
+}
+
 function CallRow({ m, mine, onCall }) {
   const video = !!m.meta?.video
   const s = m.meta?.status
@@ -104,7 +112,7 @@ function CallRow({ m, mine, onCall }) {
   )
 }
 
-export default function Chat({ chat, call, push, me, partner, memberById, colorOf }) {
+function Conversation({ chat, call, push, me, members, chatKey, groupName, onBack, memberById, colorOf }) {
   const [text, setText] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -131,7 +139,11 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
   const recTimer = useRef(null)
   const recCancel = useRef(false)
 
-  const { messages, reactions, urls, settings, typing, online } = chat
+  const { messages, reactions, urls, settings } = chat
+  const typingIds = chat.typing
+  const typing = typingIds.length > 0
+  const isGroup = chatKey === GROUP
+  const peer = isGroup ? null : memberById[chatKey]
   const meId = me.user_id
   const bubbleColor = settings.color || '#f6a9c4'
   const nameOf = (id) => settings.nicknames?.[id] || memberById[id]?.display_name || 'Someone'
@@ -328,8 +340,15 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
     setTimeout(() => el.classList.remove('flash'), 1400)
   }
 
-  const partnerName = partner ? nameOf(partner.user_id) : ''
-  const status = typing ? 'typing…' : online ? 'Active now' : 'Not online'
+  const title = isGroup ? groupName : peer ? nameOf(peer.user_id) : 'Chat'
+  const onlineNow = isGroup ? members.filter((m) => m.user_id !== meId && chat.onlineIds.includes(m.user_id)) : []
+  const online = !isGroup && chat.onlineIds.includes(chatKey)
+  const status = typing
+    ? isGroup ? `${typingIds.slice(0, 2).map(nameOf).join(', ')} typing…` : 'typing…'
+    : isGroup
+      ? onlineNow.length ? `${onlineNow.length} active now` : `${members.length} people`
+      : online ? 'Active now' : 'Not online'
+  const statusOn = typing || online || onlineNow.length > 0
 
   // build rows (day separators + grouping)
   const rows = []
@@ -342,11 +361,12 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
     const next = shown[i + 1]
     const near = (a, b) => a && b && a.user_id === b.user_id && a.kind !== 'call' && b.kind !== 'call' && Math.abs(parseISO(b.created_at) - parseISO(a.created_at)) < 5 * 60000 && format(parseISO(a.created_at), 'yyyy-MM-dd') === format(parseISO(b.created_at), 'yyyy-MM-dd')
     const lastInGroup = !near(m, next)
+    const firstInGroup = !near(shown[i - 1], m)
     prev = m
 
     const mine = m.user_id === meId
     if (m.kind === 'call') {
-      rows.push(<CallRow key={m.id} m={m} mine={mine} onCall={call.start} />)
+      rows.push(<CallRow key={m.id} m={m} mine={mine} onCall={(v) => call.start(v, chatKey)} />)
       return
     }
     if (m.deleted_at) {
@@ -372,6 +392,7 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
           </span>
         )}
         <div className="msg-col">
+          {!mine && isGroup && firstInGroup && <small className="who">{nameOf(m.user_id)}</small>}
           {m.reply_to && (
             <button type="button" className="quote" onClick={() => replied && jumpTo(replied.id)}>
               <CornerUpLeft size={12} /> {replied ? (replied.user_id === meId ? 'You' : nameOf(replied.user_id)) : 'Message'}
@@ -427,11 +448,17 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
           {(lastInGroup || open) && (
             <small className="time">
               {format(parseISO(m.created_at), 'HH:mm')}
-              {mine && m.id === lastMineId && (
-                chat.partnerRead >= m.created_at
-                  ? <span className="seen"><CheckCheck size={14} /> Seen</span>
-                  : <span><Check size={14} /> Sent</span>
-              )}
+              {mine && m.id === lastMineId && (() => {
+                if (!isGroup) {
+                  return chat.partnerRead >= m.created_at
+                    ? <span className="seen"><CheckCheck size={14} /> Seen</span>
+                    : <span><Check size={14} /> Sent</span>
+                }
+                const seenBy = chat.groupReads.filter((r) => r.read_at >= m.created_at).map((r) => r.user_id)
+                if (!seenBy.length) return <span><Check size={14} /> Sent</span>
+                const everyone = seenBy.length >= members.length - 1
+                return <span className="seen"><CheckCheck size={14} /> Seen by {everyone ? 'everyone' : seenBy.map(nameOf).join(', ')}</span>
+              })()}
             </small>
           )}
         </div>
@@ -442,13 +469,20 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
   return (
     <div className="chat card">
       <header className="chat-head">
-        <Avatar url={partner?.avatar_url} name={partnerName || '?'} color={partner ? colorOf(partner.user_id) : undefined} size="md" />
+        <button className="icon-btn back" onClick={onBack} aria-label="Back to chats"><ChevronLeft size={20} /></button>
+        {isGroup
+          ? <GroupAvatar size="md" />
+          : <Avatar url={peer?.avatar_url} name={title} color={peer ? colorOf(peer.user_id) : undefined} size="md" />}
         <div className="chat-title">
-          <strong>{partnerName || 'Chat'}</strong>
-          <small className={online ? 'on' : ''}>{partner ? status : 'Waiting for your partner to join'}</small>
+          <strong>{title}</strong>
+          <small className={statusOn ? 'on' : ''}>{status}</small>
         </div>
-        <button className="icon-btn" disabled={!partner} onClick={() => call.start(false)} aria-label="Voice call"><Phone size={17} /></button>
-        <button className="icon-btn" disabled={!partner} onClick={() => call.start(true)} aria-label="Video call"><Video size={17} /></button>
+        {!isGroup && (
+          <>
+            <button className="icon-btn" disabled={!peer} onClick={() => call.start(false, chatKey)} aria-label="Voice call"><Phone size={17} /></button>
+            <button className="icon-btn" disabled={!peer} onClick={() => call.start(true, chatKey)} aria-label="Video call"><Video size={17} /></button>
+          </>
+        )}
         <button className={'icon-btn' + (query !== null ? ' lit' : '')} onClick={() => setQuery(query === null ? '' : null)} aria-label="Search in chat"><Search size={17} /></button>
         <button className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Chat settings"><Settings size={17} /></button>
       </header>
@@ -469,12 +503,12 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
         {chat.hasMore && query === null && (
           <button type="button" className="older" onClick={older}>Load earlier messages</button>
         )}
-        {messages.length === 0 && <p className="empty">No messages yet. Say hi 👋</p>}
+        {messages.length === 0 && <p className="empty">{isGroup ? 'No messages in the group yet. Say hi 👋' : `No messages yet. Say hi to ${title} 👋`}</p>}
         {query !== null && query.trim() && shown.length === 0 && <p className="empty">No messages found.</p>}
         {rows}
         {typing && (
           <div className="msg theirs">
-            <span className="msg-av"><Avatar url={partner?.avatar_url} name={partnerName} color={colorOf(partner.user_id)} /></span>
+            <span className="msg-av"><Avatar url={memberById[typingIds[0]]?.avatar_url} name={nameOf(typingIds[0])} color={colorOf(typingIds[0])} /></span>
             <div className="msg-col"><div className="bubble typing"><i /><i /><i /></div></div>
           </div>
         )}
@@ -482,7 +516,7 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
 
       {!atBottom && (
         <button className="to-bottom" onClick={toBottom} aria-label="Jump to latest">
-          <ArrowDown size={18} />{chat.unread > 0 && <b>{chat.unread}</b>}
+          <ArrowDown size={18} />{chat.unreadActive > 0 && <b>{chat.unreadActive}</b>}
         </button>
       )}
 
@@ -555,7 +589,7 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
         <Settings_
           chat={chat}
           me={me}
-          partner={partner}
+          members={members}
           push={push}
           nameOf={nameOf}
           memberById={memberById}
@@ -566,9 +600,9 @@ export default function Chat({ chat, call, push, me, partner, memberById, colorO
   )
 }
 
-function Settings_({ chat, push, me, partner, memberById, onClose }) {
+function Settings_({ chat, push, me, members, memberById, onClose }) {
   const { settings } = chat
-  const ids = [me.user_id, partner?.user_id].filter(Boolean)
+  const ids = members.map((m) => m.user_id)
   const [nick, setNick] = useState(() => Object.fromEntries(ids.map((id) => [id, settings.nicknames?.[id] || ''])))
   const [err, setErr] = useState('')
   async function save(patch) {
@@ -589,6 +623,7 @@ function Settings_({ chat, push, me, partner, memberById, onClose }) {
 
         <div className="set-block">
           <strong>Nicknames</strong>
+          <p className="muted small">Shown in every chat. Settings here apply to all your chats.</p>
           {ids.map((id) => (
             <label key={id} className="nick">
               <span>{id === me.user_id ? 'You' : memberById[id]?.display_name}</span>
@@ -641,4 +676,108 @@ function Settings_({ chat, push, me, partner, memberById, onClose }) {
       </div>
     </div>
   )
+}
+
+const when = (iso) => {
+  const d = parseISO(iso)
+  if (isToday(d)) return format(d, 'HH:mm')
+  if (isYesterday(d)) return 'Yesterday'
+  if (Date.now() - d.getTime() < 6 * 86400000) return format(d, 'EEE')
+  return format(d, 'd MMM')
+}
+
+// The Messenger-style list: the group chat and one private chat with every other person
+function ChatList({ chat, push, me, members, memberById, colorOf, groupName }) {
+  const [q, setQ] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const nick = chat.settings.nicknames
+  const meId = me.user_id
+
+  const items = useMemo(() => {
+    const nameOf = (id) => nick?.[id] || memberById[id]?.display_name || 'Someone'
+    const needle = q.trim().toLowerCase()
+    return chat.chats
+      .map((c) => {
+        const isGroup = c.key === GROUP
+        const name = isGroup ? groupName : nameOf(c.key)
+        let line
+        if (!c.last) line = isGroup ? `Group · ${members.length} ${members.length === 1 ? 'person' : 'people'}` : 'Say hi 👋'
+        else {
+          const mine = c.last.user_id === meId
+          const who = mine ? 'You: ' : isGroup ? nameOf(c.last.user_id) + ': ' : ''
+          line = who + preview(c.last)
+        }
+        return { ...c, isGroup, name, line, person: isGroup ? null : memberById[c.key] }
+      })
+      .filter((c) => !needle || c.name.toLowerCase().includes(needle))
+      .sort((a, b) => {
+        if (a.last && b.last) return b.last.created_at.localeCompare(a.last.created_at)
+        if (a.last) return -1
+        if (b.last) return 1
+        if (a.isGroup !== b.isGroup) return a.isGroup ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
+  }, [chat.chats, nick, memberById, groupName, members.length, meId, q])
+
+  return (
+    <div className="chat card chat-hub">
+      <header className="hub-head">
+        <h2>Chats</h2>
+        <button className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Chat settings"><Settings size={17} /></button>
+      </header>
+      <label className="hub-search">
+        <Search size={16} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search chats" />
+      </label>
+      <div className="hub-list">
+        {items.map((c) => (
+          <button key={c.key} className={'crow' + (c.unread ? ' unread' : '')} onClick={() => chat.openChat(c.key)}>
+            <span className="crow-av">
+              {c.isGroup
+                ? <GroupAvatar size="md" />
+                : <Avatar url={c.person?.avatar_url} name={c.name} color={c.person ? colorOf(c.key) : undefined} size="md" />}
+              {!c.isGroup && chat.onlineIds.includes(c.key) && <i className="on-dot" />}
+            </span>
+            <span className="crow-main">
+              <strong>{c.name}</strong>
+              <small>{c.line}</small>
+            </span>
+            <span className="crow-side">
+              {c.last && <time>{when(c.last.created_at)}</time>}
+              {c.unread > 0 && <b className="badge">{c.unread > 99 ? '99+' : c.unread}</b>}
+            </span>
+          </button>
+        ))}
+        {items.length === 0 && <p className="empty">No chats found.</p>}
+        {members.length < 2 && !q.trim() && (
+          <p className="empty">When others join with your invite code, you can also chat privately with each of them here.</p>
+        )}
+      </div>
+      {settingsOpen && (
+        <Settings_ chat={chat} me={me} members={members} push={push} memberById={memberById} onClose={() => setSettingsOpen(false)} />
+      )}
+    </div>
+  )
+}
+
+export default function Chat({ chat, call, push, me, members, memberById, colorOf, groupName }) {
+  const key = chat.activeKey
+  if (key) {
+    return (
+      <Conversation
+        key={key}
+        chat={chat}
+        call={call}
+        push={push}
+        me={me}
+        members={members}
+        chatKey={key}
+        groupName={groupName}
+        onBack={chat.closeChat}
+        memberById={memberById}
+        colorOf={colorOf}
+      />
+    )
+  }
+  return <ChatList chat={chat} push={push} me={me} members={members} memberById={memberById} colorOf={colorOf} groupName={groupName} />
 }

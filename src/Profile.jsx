@@ -22,7 +22,7 @@ function toSquareBlob(file, size = 256) {
   })
 }
 
-export default function Profile({ session, member, partner, color, onSaved }) {
+export default function Profile({ session, member, others = [], color, onSaved }) {
   const [name, setName] = useState(member.display_name)
   const [col, setCol] = useState(color)
   const [about, setAbout] = useState(member.about || '')
@@ -154,7 +154,7 @@ export default function Profile({ session, member, partner, color, onSaved }) {
         <label>About me or status
           <input value={about} onChange={(e) => setAbout(e.target.value)} maxLength={60} placeholder="Exam week, send snacks" />
         </label>
-        <p className="muted small">{partner ? `${partner.display_name} can see your status next to their greeting.` : 'Your partner will see this once they join.'}</p>
+        <p className="muted small">{others.length ? `${others.map((o) => o.display_name).join(', ')} can see your status.` : 'Others will see this once they join.'}</p>
 
         {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
         <button className="btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>

@@ -753,3 +753,142 @@
   flex: 1;
   min-width: 200px;
 }
+
+/* ---------- Messenger-style list of chats ---------- */
+.chat-hub {
+  padding: 0;
+}
+.hub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 6px;
+}
+.hub-head h2 {
+  font-size: 26px;
+  font-weight: 500;
+}
+.hub-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 16px 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--muted);
+}
+.hub-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  color: inherit;
+}
+.hub-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 16px 18px;
+}
+.crow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+.crow:hover {
+  background: var(--tint);
+}
+.crow-av {
+  position: relative;
+  flex: none;
+  display: grid;
+}
+.crow-av .avatar.md {
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+}
+.on-dot {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3dbb74;
+  border: 2px solid #fff;
+}
+.crow-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.crow-main strong {
+  font-size: 17px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crow-main small {
+  color: var(--muted);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crow.unread .crow-main strong,
+.crow.unread .crow-main small {
+  font-weight: 700;
+  color: var(--text, #2d2832);
+}
+.crow-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.crow-side time {
+  color: var(--muted);
+  font-size: 12px;
+}
+.badge {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--pink-deep);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+.avatar.gav {
+  background: linear-gradient(135deg, var(--pink), var(--green));
+  color: #fff;
+}
+.icon-btn.back {
+  flex: none;
+}
+.msg-col .who {
+  display: block;
+  margin: 0 0 2px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.chat-hub {
+  max-width: 720px;
+}

@@ -187,11 +187,14 @@
   gap: 14px;
   min-width: 0;
 }
-@media (min-width: 861px) {
-  .dme,
-  .dpartner {
-    grid-column: span 6;
-  }
+
+/* Day panels: two big cards side by side; posts: one centered Facebook-style column underneath */
+.dpanels {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 18px;
+  align-items: start;
 }
 .dposts {
   grid-column: 1 / -1;
@@ -208,6 +211,7 @@
   flex-direction: column;
 }
 
+/* Bigger day dashboards */
 .dpanel.dme,
 .dpanel.dpartner {
   padding: 28px;

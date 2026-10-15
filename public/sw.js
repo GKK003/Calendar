@@ -26,7 +26,7 @@ self.addEventListener('push', (event) => {
         badge: '/icon-192.png',
         vibrate: call ? [500, 250, 500, 250, 500] : [120],
         requireInteraction: call,
-        data: { view: 'chat', call },
+        data: { view: 'chat', call, chat: d.chat || '' },
       })
     })(),
   )
@@ -36,13 +36,14 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   event.waitUntil(
     (async () => {
+      const chat = (event.notification.data && event.notification.data.chat) || ''
       const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       const w = wins[0]
       if (w) {
         await w.focus()
-        w.postMessage({ type: 'open', view: 'chat' })
+        w.postMessage({ type: 'open', view: 'chat', chat })
       } else {
-        await self.clients.openWindow('/?open=chat')
+        await self.clients.openWindow('/?open=chat' + (chat ? '&chat=' + encodeURIComponent(chat) : ''))
       }
     })(),
   )

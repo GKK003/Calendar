@@ -48,7 +48,7 @@ function EventRow({ e, owner, color, showDate, onOpen }) {
 
 export default function Dashboard({
   me,
-  partner,
+  others,
   events,
   colorOf,
   memberById,
@@ -76,7 +76,6 @@ export default function Dashboard({
 
   const todays = events.filter((e) => e.date === today)
   const mine = sortEvents(todays.filter((e) => e.user_id === me.user_id))
-  const theirs = partner ? sortEvents(todays.filter((e) => e.user_id === partner.user_id)) : []
   const specialToday = todays.filter((e) => e.type === 'special')
 
   const todayPosts = api.posts.filter((p) => ymd(new Date(p.created_at)) === today)
@@ -113,7 +112,9 @@ export default function Dashboard({
         </div>
         <div className="dclocks">
           <PersonClock person={me} color={colorOf(me.user_id)} isMe />
-          {partner && <PersonClock person={partner} color={colorOf(partner.user_id)} />}
+          {others.map((o) => (
+            <PersonClock key={o.user_id} person={o} color={colorOf(o.user_id)} />
+          ))}
         </div>
       </section>
 
@@ -124,28 +125,33 @@ export default function Dashboard({
         </section>
       )}
 
-      <section className="card dpanel dme">
-        <h2>Your day</h2>
-        <div className="dlist">
-          {mine.length === 0 && <p className="empty">Nothing planned today.</p>}
-          {mine.map((e) => (
-            <EventRow key={e.id} e={e} onOpen={onOpenEvent} />
-          ))}
-        </div>
-      </section>
-
-      {partner && (
-        <section className="card dpanel dpartner">
-          <h2>{partner.display_name}'s day</h2>
-          {partner.about && <p className="muted small">{partner.about}</p>}
+      <div className="dpanels">
+        <section className="card dpanel dme">
+          <h2>Your day</h2>
           <div className="dlist">
-            {theirs.length === 0 && <p className="empty">Nothing planned today.</p>}
-            {theirs.map((e) => (
+            {mine.length === 0 && <p className="empty">Nothing planned today.</p>}
+            {mine.map((e) => (
               <EventRow key={e.id} e={e} onOpen={onOpenEvent} />
             ))}
           </div>
         </section>
-      )}
+
+        {others.map((o) => {
+          const theirs = sortEvents(todays.filter((e) => e.user_id === o.user_id))
+          return (
+            <section key={o.user_id} className="card dpanel dpartner">
+              <h2>{o.display_name}'s day</h2>
+              {o.about && <p className="muted small">{o.about}</p>}
+              <div className="dlist">
+                {theirs.length === 0 && <p className="empty">Nothing planned today.</p>}
+                {theirs.map((e) => (
+                  <EventRow key={e.id} e={e} onOpen={onOpenEvent} />
+                ))}
+              </div>
+            </section>
+          )
+        })}
+      </div>
 
       <section className="dposts" id="todays-posts">
         <div className="dpanel-head">

@@ -36,7 +36,7 @@ export default function Setup({ onDone }) {
         ) : (
           <label>Invite code<input required value={code} onChange={(e) => setCode(e.target.value)} placeholder="6 characters" /></label>
         )}
-        {mode === 'create' && <p className="muted small">After creating it, you'll see an invite code to send to your girlfriend.</p>}
+        {mode === 'create' && <p className="muted small">After creating it, you'll see an invite code to send to the people you want to share it with (up to 6 people).</p>}
         {err && <p className="error">{err}</p>}
         <button className="btn primary" disabled={busy}>{mode === 'create' ? 'Create calendar' : 'Join calendar'}</button>
         <button type="button" className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>

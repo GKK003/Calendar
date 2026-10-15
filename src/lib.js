@@ -8,8 +8,8 @@ export const TYPES = {
   special: { label: 'Special', color: '#e8a93a' },
 }
 
-// Avatar colors for the two people (same on both phones)
-export const AVATARS = ['#f6a9c4', '#a9ddc2']
+// Fallback avatar colors when someone has not picked one yet (same on every phone)
+export const AVATARS = ['#f6a9c4', '#a9ddc2', '#cdb8f5', '#ffc9a3', '#a8d4f5', '#f7e3a1']
 
 export const ymd = (d) => format(d, 'yyyy-MM-dd')
 export const hm = (t) => (t ? t.slice(0, 5) : '')
