@@ -3,6 +3,7 @@ import { Check, RotateCcw, Users, Gamepad2, Grid3X3, Keyboard } from "lucide-rea
 import { supabase } from "./supabase.js";
 import VALID_WORDS from "./word-list.json";
 import { usePath, navigate } from "./router.js";
+import { generatePuzzle, DIFFICULTIES } from "./sudoku.js";
 import "./games.css";
 
 const WORDS = ["APPLE","BRAVE","CHAIR","DREAM","EARTH","FLAME","GRAPE","HEART","JUICE","KNIFE","LEMON","MUSIC","NIGHT","OCEAN","PEACH","QUIET","ROBOT","SMILE","TRAIN","WATER","PLANT","CLOUD","BREAD","LIGHT","HOUSE","GREEN","STONE","WORLD","PARTY","SUGAR","TIGER","RIVER","SHEEP","MOUSE","CROWN","BEACH","SWEET","HAPPY","MAGIC","PIZZA"];
@@ -17,7 +18,7 @@ const SOLUTION = [
   [9,6,1,5,3,7,2,8,4],[2,8,7,4,1,9,6,3,5],[3,4,5,2,8,6,1,7,9]
 ];
 const wordState = () => ({ answer: WORDS[Math.floor(Math.random()*WORDS.length)], guesses: [], current: "", status: "playing", lastBy: null });
-const sudokuState = () => ({ puzzle: PUZZLE, solution: SOLUTION, values: PUZZLE.map(r=>r.slice()), selected: [0,0], status: "playing", lastBy: null });
+const sudokuState = (difficulty = "normal") => { const { puzzle, solution } = generatePuzzle(difficulty); return { puzzle, solution, difficulty, values: puzzle.map(r=>r.slice()), selected: [0,0], status: "playing", lastBy: null }; };
 
 export default function Games({ space, member, members }) {
   const path = usePath();
@@ -83,7 +84,13 @@ export default function Games({ space, member, members }) {
       setSaving(false);
     });
   };
-  const reset = () => commit(game === "wordle" ? wordState() : sudokuState());
+  const reset = () => commit(game === "wordle" ? wordState() : sudokuState(state?.difficulty || "normal"));
+  const startSudoku = (difficulty) => {
+    if (!state) return;
+    const progress = state.values.some((row,r)=>row.some((v,c)=>v!==state.puzzle[r][c]));
+    if (state.status !== "won" && progress && !window.confirm("Start a new " + DIFFICULTIES[difficulty].label + " puzzle? Your current progress will be lost for both of you.")) return;
+    commit(sudokuState(difficulty));
+  };
   const rawState = session && session.game_type === game ? session.state : null;
   const validState = rawState && (game === "wordle" ? Array.isArray(rawState.guesses) : Array.isArray(rawState.values) && Array.isArray(rawState.puzzle) && Array.isArray(rawState.solution));
   const state = validState ? rawState : null;
@@ -170,10 +177,11 @@ export default function Games({ space, member, members }) {
       <div className="wordle-keyboard">{["QWERTYUIOP","ASDFGHJKL"].map(row=><div className="keyboard-row" key={row}>{row.split("").map(k=><button key={k} onClick={()=>wordGuess(k)}>{k}</button>)}</div>)}<div className="keyboard-row"><button className="key-wide" onClick={()=>wordGuess("ENTER")}>ENTER</button>{"ZXCVBNM".split("").map(k=><button key={k} onClick={()=>wordGuess(k)}>{k}</button>)}<button className="key-wide" onClick={()=>wordGuess("BACKSPACE")}>⌫</button></div></div>
       <div className="games-status">{state.status === "won" ? <><Check size={17}/> You solved it together! The word was {state.answer}.</> : state.status === "lost" ? <>The word was {state.answer}. Start a new game to play again.</> : <>Last move: <strong>{lastName}</strong> · {state.guesses.length}/6 guesses used</>}</div>
     </div> : <div className="game-card sudoku-card">
-      <div className="game-card-head"><div><h2>Shared Sudoku</h2><p>Choose any empty cell and fill it. Your teammate sees each number live.</p></div><button className="games-reset" onClick={reset} title="Start a new puzzle"><RotateCcw size={17}/> Reset</button></div>
+      <div className="game-card-head"><div><h2>Shared Sudoku</h2><p>Pick a difficulty, then choose any empty cell and fill it. Your teammate sees each number live.</p></div><button className="games-reset" onClick={reset} title="Start a new puzzle"><RotateCcw size={17}/> New puzzle</button></div>
+      <div className="difficulty-tabs" role="group" aria-label="Difficulty">{Object.entries(DIFFICULTIES).map(([key,d])=><button key={key} className={(state.difficulty||"normal")===key?"active":""} onClick={()=>startSudoku(key)}>{d.label}</button>)}</div>
       <div className="sudoku-layout"><div className="sudoku-board" role="grid" aria-label="Shared Sudoku board">{state.values.map((row,r)=>row.map((value,c)=>{const fixed=state.puzzle[r][c]!==0;const selected=state.selected?.[0]===r&&state.selected?.[1]===c;const same=state.selected?.[0]===r||state.selected?.[1]===c;return <button role="gridcell" aria-label={`Row ${r+1}, column ${c+1}, ${value||"empty"}`} key={`${r}-${c}`} className={`sudoku-cell ${fixed?"fixed":"editable"} ${selected?"selected":""} ${same&&!selected?"related":""} ${r%3===2&&r!==8?"block-bottom":""} ${c%3===2&&c!==8?"block-right":""}`} onClick={()=>selectCell(r,c)}>{value||""}</button>}))}</div>
       <div className="sudoku-controls"><p className="sudoku-label">Selected cell</p><div className="number-pad">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} onClick={()=>sudokuSet(n)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>{n}</button>)}<button className="clear-number" onClick={()=>sudokuSet(0)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>Clear</button></div><p className="games-tip">Click a cell, then type 1–9 on your keyboard. Use Backspace or Delete to clear, and arrow keys to move between cells. Numbers sync instantly.</p></div></div>
-      <div className="games-status">{state.status === "won" ? <><Check size={17}/> Puzzle completed together!</> : <>Last move: <strong>{lastName}</strong> · Shared progress</>}</div>
+      <div className="games-status">{state.status === "won" ? <><Check size={17}/> Puzzle completed together!</> : <>Last move: <strong>{lastName}</strong> · {DIFFICULTIES[state.difficulty||"normal"].label} puzzle</>}</div>
     </div>}
     <p className="games-footnote">Changes are saved to your shared calendar space, so you can switch devices and continue together.</p>
   </section>;
