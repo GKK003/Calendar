@@ -15,9 +15,11 @@ export default function YearView({ year, byDate, onPick }) {
               {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} className="dow">{d}</span>)}
               {Array.from({ length: lead }).map((_, i) => <span key={'l' + i} />)}
               {days.map((d) => {
-                const n = (byDate[ymd(d)] || []).length
+                const list = byDate[ymd(d)] || []
+                const n = list.length
+                const special = list.some((e) => e.type === 'special')
                 return (
-                  <button key={d} className={'md' + (n ? ' has' : '') + (n > 2 ? ' busy' : '') + (isToday(d) ? ' today' : '')} onClick={() => onPick(d)}>
+                  <button key={d} className={'md' + (n ? ' has' : '') + (n > 2 ? ' busy' : '') + (special ? ' special' : '') + (isToday(d) ? ' today' : '')} onClick={() => onPick(d)}>
                     {d.getDate()}
                   </button>
                 )

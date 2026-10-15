@@ -28,6 +28,7 @@ import {
   Trash2,
   User,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import {
@@ -51,6 +52,7 @@ import Clocks from "./Clocks.jsx";
 import Profile from "./Profile.jsx";
 import Avatar from "./Avatar.jsx";
 import PartnerProfile from "./PartnerProfile.jsx";
+import "./special.css";
 
 export default function Calendar({ session, member, space, onProfileChange }) {
   const [cursor, setCursor] = useState(new Date());
@@ -236,12 +238,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       if (f.date !== i.date) {
         const { error } = await supabase
           .from("events")
-          .update({
-            date: f.date,
-            start_time: start,
-            end_time: end,
-            tz: f.zone,
-          })
+          .update({ date: f.date, start_time: start, end_time: end, tz: f.zone })
           .eq("id", i.id);
         if (error) return error.message;
       }
@@ -278,18 +275,24 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         .select();
     } else {
       const start = parseISO(f.date);
-      const dates = f.repeatDays.length
-        ? Array.from({ length: f.repeatWeeks * 7 }, (_, i) =>
-            addDays(start, i),
-          ).filter(
-            (d) =>
-              f.repeatDays.includes(getDay(d)) &&
-              differenceInCalendarWeeks(d, start, { weekStartsOn: 1 }) %
-                f.repeatEvery ===
-                0,
-          )
-        : [start];
-      const series_id = f.repeatDays.length ? uuid() : null;
+      const weekly = f.type !== "special" && f.repeatDays.length > 0;
+      const yearly = f.type === "special" && f.repeatYearly;
+      let dates = [start];
+      if (weekly)
+        dates = Array.from({ length: f.repeatWeeks * 7 }, (_, i) =>
+          addDays(start, i),
+        ).filter(
+          (d) =>
+            f.repeatDays.includes(getDay(d)) &&
+            differenceInCalendarWeeks(d, start, { weekStartsOn: 1 }) %
+              f.repeatEvery ===
+              0,
+        );
+      if (yearly)
+        dates = Array.from({ length: f.repeatYears }, (_, i) =>
+          addYears(start, i),
+        );
+      const series_id = weekly || yearly ? uuid() : null;
       const rows = dates.map((d) => ({ ...base, date: ymd(d), series_id }));
       req = supabase.from("events").insert(rows).select();
     }
@@ -595,6 +598,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         {days.map((d) => {
                           const k = ymd(d);
                           const list = byDate[k] || [];
+                          const hasSpecial = list.some((e) => e.type === "special");
                           return (
                             <button
                               key={k}
@@ -602,16 +606,21 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                                 "day" +
                                 (isSameMonth(d, cursor) ? "" : " out") +
                                 (isToday(d) ? " today" : "") +
+                                (hasSpecial ? " special" : "") +
                                 (k === selected ? " sel" : "")
                               }
                               onClick={() => pick(d)}
                               onDoubleClick={() => openNew(k)}
                             >
                               <b>{d.getDate()}</b>
+                              {hasSpecial && (
+                                <Sparkles className="sd-badge" size={14} />
+                              )}
                               <span className="labels">
                                 {list.slice(0, 2).map((e) => (
                                   <em
                                     key={e.id}
+                                    className={e.type === "special" ? "sd-em" : undefined}
                                     style={{ "--c": TYPES[e.type].color }}
                                   >
                                     {e.title}
@@ -664,7 +673,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                     {dayEvents.map((e) => {
                       const owner = memberById[e.user_id];
                       return (
-                        <div key={e.id} className="ev-card">
+                        <div
+                          key={e.id}
+                          className={
+                            "ev-card" + (e.type === "special" ? " special" : "")
+                          }
+                        >
                           <button
                             className="ev"
                             onClick={() =>
@@ -675,15 +689,19 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                               className="bar"
                               style={{ background: TYPES[e.type].color }}
                             />
-                            <strong>{e.title}</strong>
+                            <strong>
+                              {e.type === "special" && (
+                                <Sparkles size={14} className="sd-inline" />
+                              )}
+                              {e.title}
+                            </strong>
                             {e.note && (
                               <span className="muted small note">{e.note}</span>
                             )}
                             {e.origin && (
                               <span className="muted small note">
                                 Set as {e.origin.start_time}
-                                {e.origin.end_time &&
-                                  ` – ${e.origin.end_time}`}{" "}
+                                {e.origin.end_time && ` – ${e.origin.end_time}`}{" "}
                                 {zoneLabel(e.origin.tz)}
                               </span>
                             )}
