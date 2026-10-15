@@ -6,21 +6,19 @@ import './gallery.css'
 import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { Composer, PostCard } from './Posts.jsx'
-import { TYPES, clockIn, greeting, sortEvents, timeLabel, ymd, zoneLabel, zoneOfCity } from './lib.js'
+import { TYPES, ZONES, clockIn, greeting, sortEvents, timeLabel, ymd, zoneOfCity } from './lib.js'
 
-function PersonClock({ person, color, isMe }) {
+function ZoneClock({ zone }) {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
-  const tz = zoneOfCity(person.city)
   return (
     <div className="dclock">
-      <Avatar url={person.avatar_url} name={person.display_name} color={color} size="md" />
       <div>
-        <small>{isMe ? 'You' : person.display_name} · {zoneLabel(tz)}</small>
-        <b>{clockIn(tz, now).slice(0, 5)}</b>
+        <small>{zone.label}</small>
+        <b>{clockIn(zone.id, now).slice(0, 5)}</b>
       </div>
     </div>
   )
@@ -111,10 +109,11 @@ export default function Dashboard({
           </div>
         </div>
         <div className="dclocks">
-          <PersonClock person={me} color={colorOf(me.user_id)} isMe />
-          {others.map((o) => (
-            <PersonClock key={o.user_id} person={o} color={colorOf(o.user_id)} />
-          ))}
+          {[...ZONES]
+            .sort((a, z) => (z.id === zoneOfCity(me.city)) - (a.id === zoneOfCity(me.city)))
+            .map((z) => (
+              <ZoneClock key={z.id} zone={z} />
+            ))}
         </div>
       </section>
 
