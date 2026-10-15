@@ -1,0 +1,223 @@
+.dash {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.dash > * {
+  grid-column: span 12;
+}
+.dhero {
+  padding: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #fdf1f5, #e6f6ee);
+}
+.dhero h1 {
+  font-size: 34px;
+  font-weight: 400;
+}
+.dhero-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.dclocks {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.dclock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 14px 18px;
+}
+.dclock small {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+.dclock b {
+  font-size: 32px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.dspecial {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  border: 1px solid #e8a93a;
+  background: linear-gradient(160deg, #fff3d6, #fff 80%);
+}
+.dspecial svg {
+  color: #e8a93a;
+  flex: none;
+}
+.dpanel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.dpanel h2 {
+  font-size: 20px;
+  font-weight: 500;
+}
+.dpanel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dlist,
+.dpost-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.drow {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.drow:hover {
+  background: var(--tint);
+}
+.drow > i {
+  flex: none;
+  width: 5px;
+  align-self: stretch;
+  border-radius: 4px;
+}
+.drow-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.drow-main strong {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drow-main small {
+  color: var(--muted);
+}
+.drow.special {
+  border-color: #e8a93a;
+  background: linear-gradient(160deg, #fff3d6, #fff 80%);
+}
+.dpost {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.dpost:hover {
+  background: var(--tint);
+}
+.dpost-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dpost-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dpost img {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.dcount {
+  flex: none;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--pink-deep);
+}
+
+@media (min-width: 861px) {
+  .dme,
+  .dpartner {
+    grid-column: span 6;
+  }
+  .dnext {
+    grid-column: span 12;
+  }
+  .dposts {
+    grid-column: span 12;
+  }
+}
+@media (min-width: 1200px) {
+  .dme,
+  .dpartner,
+  .dnext {
+    grid-column: span 4;
+  }
+  .dposts {
+    grid-column: span 12;
+  }
+  .dpost-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 860px) {
+  .dhero {
+    padding: 20px;
+  }
+  .dhero h1 {
+    font-size: 26px;
+  }
+  .dclock b {
+    font-size: 26px;
+  }
+}
+
+.rail-ico {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.rail-ico .dot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pink-deep);
+  border: 2px solid #fff;
+}
