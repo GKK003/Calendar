@@ -29,6 +29,8 @@ import {
   User,
   MapPin,
   Sparkles,
+  Home,
+  MessageCircle,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import {
@@ -52,12 +54,15 @@ import Clocks from "./Clocks.jsx";
 import Profile from "./Profile.jsx";
 import Avatar from "./Avatar.jsx";
 import PartnerProfile from "./PartnerProfile.jsx";
+import Dashboard from "./Dashboard.jsx";
+import Posts from "./Posts.jsx";
+import usePosts from "./usePosts.js";
 import "./special.css";
 
 export default function Calendar({ session, member, space, onProfileChange }) {
   const [cursor, setCursor] = useState(new Date());
   const [selected, setSelected] = useState(ymd(new Date()));
-  const [view, setView] = useState("month");
+  const [view, setView] = useState("today");
   const [profileTab, setProfileTab] = useState("me");
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([member]);
@@ -66,6 +71,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(null); // { initial, editing }
   const [copied, setCopied] = useState(false);
+  const postsApi = usePosts(space, member.user_id);
+  const { markSeen } = postsApi;
 
   const year = cursor.getFullYear();
 
@@ -140,6 +147,15 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const me = memberById[member.user_id] || member;
   const partner = members.find((m) => m.user_id !== member.user_id);
   const tz = zoneOfCity(me.city);
+
+  const localEvents = useMemo(
+    () => events.map((e) => localizeEvent(e, tz)),
+    [events, tz],
+  );
+
+  useEffect(() => {
+    if (view === "posts") markSeen();
+  }, [view, markSeen]);
 
   const byDate = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -385,6 +401,14 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         <nav className="rail">
           <div className="logo">V</div>
           <button
+            className={"rail-btn" + (view === "today" ? " on" : "")}
+            onClick={() => setView("today")}
+            aria-label="Today"
+          >
+            <Home size={20} />
+            <span>Today</span>
+          </button>
+          <button
             className={"rail-btn" + (view === "month" ? " on" : "")}
             onClick={() => setView("month")}
             aria-label="Month view"
@@ -399,6 +423,17 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           >
             <LayoutGrid size={20} />
             <span>Year</span>
+          </button>
+          <button
+            className={"rail-btn" + (view === "posts" ? " on" : "")}
+            onClick={() => setView("posts")}
+            aria-label="Posts"
+          >
+            <span className="rail-ico">
+              <MessageCircle size={20} />
+              {postsApi.unread && view !== "posts" && <i className="dot" />}
+            </span>
+            <span>Posts</span>
           </button>
           <button
             className={"rail-btn" + (view === "profile" ? " on" : "")}
@@ -462,6 +497,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             </div>
             <div className="top-right">
               <Clocks tz={tz} />
+              {(view === "month" || view === "year") && (
               <label className="search">
                 <Search size={16} />
                 <input
@@ -470,10 +506,33 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                   placeholder="Search events"
                 />
               </label>
+              )}
             </div>
           </header>
 
-          {view === "profile" ? (
+          {view === "today" ? (
+            <Dashboard
+              me={me}
+              partner={partner}
+              events={localEvents}
+              colorOf={colorOf}
+              memberById={memberById}
+              posts={postsApi.posts}
+              replies={postsApi.replies}
+              urls={postsApi.urls}
+              onOpenEvent={(e) => setForm({ initial: e, editing: true })}
+              onNewEvent={() => openNew(ymd(new Date()))}
+              onOpenPosts={() => setView("posts")}
+              onOpenCalendar={() => setView("month")}
+            />
+          ) : view === "posts" ? (
+            <Posts
+              api={postsApi}
+              me={me}
+              memberById={memberById}
+              colorOf={colorOf}
+            />
+          ) : view === "profile" ? (
             <>
               {partner && (
                 <div className="seg ptabs">
@@ -740,9 +799,15 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </main>
       </div>
 
-      <button className="fab" onClick={() => openNew()} aria-label="Add event">
-        <Plus size={26} />
-      </button>
+      {view !== "posts" && view !== "profile" && (
+        <button
+          className="fab"
+          onClick={() => openNew(view === "today" ? ymd(new Date()) : selected)}
+          aria-label="Add event"
+        >
+          <Plus size={26} />
+        </button>
+      )}
 
       {form && (
         <EventForm

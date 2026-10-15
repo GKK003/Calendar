@@ -221,3 +221,7 @@
   background: var(--pink-deep);
   border: 2px solid #fff;
 }
+
+.rail-btn .rail-ico {
+  display: grid;
+}
