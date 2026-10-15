@@ -1200,7 +1200,7 @@ label.check {
 .brutal-menu-trigger {
   position: fixed;
   z-index: 102;
-  top: 22px;
+  top: 10px;
   left: 22px;
   display: flex;
   align-items: center;
