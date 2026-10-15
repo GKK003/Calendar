@@ -96,6 +96,48 @@ export default function Games({ space, member, members }) {
     commit({...state,values,status:won?"won":"playing",lastBy:member.user_id});
   };
   const selectCell = (r,c) => commit({...state,selected:[r,c],lastBy:member.user_id});
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+
+      if (game === "wordle") {
+        if (/^[a-z]$/i.test(event.key)) {
+          event.preventDefault();
+          wordGuess(event.key.toUpperCase());
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          wordGuess("ENTER");
+        } else if (event.key === "Backspace") {
+          event.preventDefault();
+          wordGuess("BACKSPACE");
+        }
+        return;
+      }
+
+      if (game === "sudoku") {
+        if (/^[1-9]$/.test(event.key)) {
+          event.preventDefault();
+          sudokuSet(Number(event.key));
+        } else if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") {
+          event.preventDefault();
+          sudokuSet(0);
+        } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+          event.preventDefault();
+          const [r, c] = state?.selected || [0, 0];
+          const nextR = Math.max(0, Math.min(8, r + (event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0)));
+          const nextC = Math.max(0, Math.min(8, c + (event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0)));
+          selectCell(nextR, nextC);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [game, state, wordGuess, sudokuSet, selectCell]);
+
   const score = (guess, index) => {
     const answer = state.answer.split(""); const result = Array(5).fill("absent");
     guess.split("").forEach((ch,i)=>{ if(ch===answer[i]) { result[i]="correct"; answer[i]=null; } });
@@ -110,14 +152,14 @@ export default function Games({ space, member, members }) {
     <div className="games-tabs"><button className={game === "wordle" ? "active" : ""} onClick={()=>setGame("wordle")}><Keyboard size={18}/> Wordle</button><button className={game === "sudoku" ? "active" : ""} onClick={()=>setGame("sudoku")}><Grid3X3 size={18}/> Sudoku</button></div>
     {notice && <div className="games-notice" role="status">{notice}</div>}
     {loading || !state ? <div className="games-loading">Loading shared board…</div> : game === "wordle" ? <div className="game-card wordle-card">
-      <div className="game-card-head"><div><h2>Wordle together</h2><p>Work together to find the five-letter word in six guesses.</p></div><button className="games-reset" onClick={reset} title="Start a new game"><RotateCcw size={17}/> New game</button></div>
+      <div className="game-card-head"><div><h2>Wordle together</h2><p>Work together to find the five-letter word in six guesses. Type letters on your keyboard, press Enter to submit, and Backspace to erase.</p></div><button className="games-reset" onClick={reset} title="Start a new game"><RotateCcw size={17}/> New game</button></div>
       <div className="wordle-board" aria-label="Shared Wordle board">{Array.from({length:6},(_,ri)=>{const guess=state.guesses[ri];const letters=guess?guess.word:ri===state.guesses.length?state.current:"";const colors=guess?score(guess.word,ri):[];return <div className="wordle-row" key={ri}>{Array.from({length:5},(_,ci)=><div key={ci} className={`wordle-tile ${guess?colors[ci]:letters[ci]?"filled":""}`} aria-label={letters[ci]||"empty"}>{letters[ci]||""}</div>)}</div>})}</div>
       <div className="wordle-keyboard">{["QWERTYUIOP","ASDFGHJKL"].map(row=><div className="keyboard-row" key={row}>{row.split("").map(k=><button key={k} onClick={()=>wordGuess(k)}>{k}</button>)}</div>)}<div className="keyboard-row"><button className="key-wide" onClick={()=>wordGuess("ENTER")}>ENTER</button>{"ZXCVBNM".split("").map(k=><button key={k} onClick={()=>wordGuess(k)}>{k}</button>)}<button className="key-wide" onClick={()=>wordGuess("BACKSPACE")}>⌫</button></div></div>
       <div className="games-status">{state.status === "won" ? <><Check size={17}/> You solved it together! The word was {state.answer}.</> : state.status === "lost" ? <>The word was {state.answer}. Start a new game to play again.</> : <>Last move: <strong>{lastName}</strong> · {state.guesses.length}/6 guesses used</>}</div>
     </div> : <div className="game-card sudoku-card">
       <div className="game-card-head"><div><h2>Shared Sudoku</h2><p>Choose any empty cell and fill it. Your teammate sees each number live.</p></div><button className="games-reset" onClick={reset} title="Start a new puzzle"><RotateCcw size={17}/> Reset</button></div>
       <div className="sudoku-layout"><div className="sudoku-board" role="grid" aria-label="Shared Sudoku board">{state.values.map((row,r)=>row.map((value,c)=>{const fixed=state.puzzle[r][c]!==0;const selected=state.selected?.[0]===r&&state.selected?.[1]===c;const same=state.selected?.[0]===r||state.selected?.[1]===c;return <button role="gridcell" aria-label={`Row ${r+1}, column ${c+1}, ${value||"empty"}`} key={`${r}-${c}`} className={`sudoku-cell ${fixed?"fixed":"editable"} ${selected?"selected":""} ${same&&!selected?"related":""} ${r%3===2&&r!==8?"block-bottom":""} ${c%3===2&&c!==8?"block-right":""}`} onClick={()=>selectCell(r,c)}>{value||""}</button>}))}</div>
-      <div className="sudoku-controls"><p className="sudoku-label">Selected cell</p><div className="number-pad">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} onClick={()=>sudokuSet(n)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>{n}</button>)}<button className="clear-number" onClick={()=>sudokuSet(0)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>Clear</button></div><p className="games-tip">Numbers are shared instantly. Work together to complete all 81 cells.</p></div></div>
+      <div className="sudoku-controls"><p className="sudoku-label">Selected cell</p><div className="number-pad">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} onClick={()=>sudokuSet(n)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>{n}</button>)}<button className="clear-number" onClick={()=>sudokuSet(0)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>Clear</button></div><p className="games-tip">Click a cell, then type 1–9 on your keyboard. Use Backspace or Delete to clear, and arrow keys to move between cells. Numbers sync instantly.</p></div></div>
       <div className="games-status">{state.status === "won" ? <><Check size={17}/> Puzzle completed together!</> : <>Last move: <strong>{lastName}</strong> · Shared progress</>}</div>
     </div>}
     <p className="games-footnote">Changes are saved to your shared calendar space, so you can switch devices and continue together.</p>
