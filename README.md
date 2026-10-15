@@ -72,3 +72,12 @@ Do this once, in this order:
 4. **On each phone:** close the app completely and open it again once so the new version loads. Then the new person joins with the invite code.
 
 Notes: the chat colour, nicknames and quick reaction are shared by all chats. Time zones still offer only Tbilisi and New York.
+
+## Shared Wordle and Sudoku
+
+1. In Supabase, open **SQL Editor** and run `supabase/games.sql` after the main `supabase/schema.sql` has been applied.
+2. In Supabase, open **Database → Publications** and confirm `shared_games` is included in `supabase_realtime` (the SQL migration adds it automatically when permissions allow).
+3. Install dependencies with `npm install`, then run `npm run dev`.
+4. Sign in with two accounts joined to the same shared space, open **Games**, and select Wordle or Sudoku. Both people use the same board; moves are stored in Supabase and broadcast with Realtime.
+
+The game table is protected by row-level security so signed-in users can access only their own shared space. Wordle's answer is currently part of the shared game state, so this is intended for casual cooperative play rather than cheat-resistant competitive play. For competitive play, move answer selection and guess scoring into a server-side database function or trusted backend.

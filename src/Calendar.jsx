@@ -33,6 +33,7 @@ import {
   Images,
   MessageCircle,
   Film,
+  Gamepad2,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import {
@@ -60,6 +61,7 @@ import Dashboard from "./Dashboard.jsx";
 import Gallery from "./Gallery.jsx";
 import Chat from "./Chat.jsx";
 import Cinema from "./Cinema.jsx";
+import Games from "./Games.jsx";
 import CallOverlay from "./CallOverlay.jsx";
 import useChat from "./useChat.js";
 import useCall from "./useCall.js";
@@ -450,7 +452,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     <div className="app">
       <div
         className={
-          "shell" + (view === "chat" || view === "cinema" ? " chat-mode" : "")
+          "shell" + (view === "chat" || view === "cinema" || view === "games" ? " chat-mode" : "")
         }
       >
         <nav className="rail">
@@ -499,11 +501,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Cinema</span>
           </button>
           <button
-            onClick={() => setCurrentView("games")}
-            className={`rail-btn ${currentView === "games" ? "on" : ""}`}
+            className={"rail-btn" + (view === "games" ? " on" : "")}
+            onClick={() => setView("games")}
+            aria-label="Games"
           >
-            <span>🎮</span>
-            <span>Arcade</span>
+            <Gamepad2 size={20} />
+            <span>Games</span>
           </button>
           <button
             className={"rail-btn" + (view === "chat" ? " on" : "")}
@@ -539,7 +542,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </nav>
 
         <main className="main">
-          {view !== "chat" && view !== "cinema" && (
+          {view !== "chat" && view !== "cinema" && view !== "games" && (
             <header className="top">
               <div className="hello-row">
                 <Avatar
@@ -600,7 +603,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           {push.state === "off" &&
             !pushHidden &&
             view !== "chat" &&
-            view !== "cinema" && (
+            view !== "cinema" &&
+        view !== "games" && (
               <div className="push-banner">
                 <span>
                   Get notified about messages and calls, even when the app is
@@ -634,6 +638,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             />
           ) : view === "cinema" ? (
             <Cinema space={space} userId={member.user_id} />
+          ) : view === "games" ? (
+            <Games space={space} member={member} members={members} />
           ) : view === "today" ? (
             <Dashboard
               me={me}
@@ -936,7 +942,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       {view !== "gallery" &&
         view !== "profile" &&
         view !== "chat" &&
-        view !== "cinema" && (
+        view !== "cinema" &&
+        view !== "games" && (
           <button
             className="fab"
             onClick={() =>
