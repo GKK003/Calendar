@@ -1,23 +1,24 @@
-import { useEffect } from 'react'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import "./posts.css";
+import { useEffect } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 // items: [{ url, caption }]   index: which one is open
 export default function Lightbox({ items, index, onIndex, onClose }) {
-  const item = items[index]
-  const many = items.length > 1
-  const step = (d) => onIndex((index + d + items.length) % items.length)
+  const item = items[index];
+  const many = items.length > 1;
+  const step = (d) => onIndex((index + d + items.length) % items.length);
 
   useEffect(() => {
     function key(e) {
-      if (e.key === 'Escape') onClose()
-      else if (many && e.key === 'ArrowLeft') step(-1)
-      else if (many && e.key === 'ArrowRight') step(1)
+      if (e.key === "Escape") onClose();
+      else if (many && e.key === "ArrowLeft") step(-1);
+      else if (many && e.key === "ArrowRight") step(1);
     }
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  })
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
 
-  if (!item) return null
+  if (!item) return null;
   return (
     <div className="lb" onClick={onClose}>
       <button className="lb-btn lb-close" onClick={onClose} aria-label="Close">
@@ -27,8 +28,8 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
         <button
           className="lb-btn lb-prev"
           onClick={(e) => {
-            e.stopPropagation()
-            step(-1)
+            e.stopPropagation();
+            step(-1);
           }}
           aria-label="Previous photo"
         >
@@ -40,7 +41,12 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
         {(item.caption || many) && (
           <figcaption>
             {item.caption}
-            {many && <span> · {index + 1} / {items.length}</span>}
+            {many && (
+              <span>
+                {" "}
+                · {index + 1} / {items.length}
+              </span>
+            )}
           </figcaption>
         )}
       </figure>
@@ -48,8 +54,8 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
         <button
           className="lb-btn lb-next"
           onClick={(e) => {
-            e.stopPropagation()
-            step(1)
+            e.stopPropagation();
+            step(1);
           }}
           aria-label="Next photo"
         >
@@ -57,5 +63,5 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
         </button>
       )}
     </div>
-  )
+  );
 }

@@ -31,6 +31,7 @@ import {
   Sparkles,
   Home,
   Images,
+  MessageCircle,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import {
@@ -56,6 +57,10 @@ import Avatar from "./Avatar.jsx";
 import PartnerProfile from "./PartnerProfile.jsx";
 import Dashboard from "./Dashboard.jsx";
 import Gallery from "./Gallery.jsx";
+import Chat from "./Chat.jsx";
+import CallOverlay from "./CallOverlay.jsx";
+import useChat from "./useChat.js";
+import useCall from "./useCall.js";
 import usePosts from "./usePosts.js";
 import "./special.css";
 
@@ -147,6 +152,17 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const me = memberById[member.user_id] || member;
   const partner = members.find((m) => m.user_id !== member.user_id);
   const tz = zoneOfCity(me.city);
+  const chat = useChat(
+    space,
+    member.user_id,
+    partner?.user_id,
+    partner ? partner.display_name : "",
+  );
+  const callApi = useCall({
+    space,
+    userId: member.user_id,
+    onLog: chat.logCall,
+  });
 
   const localEvents = useMemo(
     () => events.map((e) => localizeEvent(e, tz)),
@@ -378,6 +394,20 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     load();
   }
 
+  async function clearAll() {
+    if (!confirm("Delete ALL events for both of you? This cannot be undone."))
+      return;
+    const word = prompt("Type DELETE to confirm");
+    if (word?.trim().toUpperCase() !== "DELETE") return;
+    const { error } = await supabase
+      .from("events")
+      .delete()
+      .eq("space_id", space.id);
+    if (error) return alert("Could not clear events: " + error.message);
+    setEvents([]);
+    load();
+  }
+
   function copyCode() {
     navigator.clipboard?.writeText(space.code);
     setCopied(true);
@@ -388,7 +418,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
   return (
     <div className="app">
-      <div className="shell">
+      <div className={"shell" + (view === "chat" ? " chat-mode" : "")}>
         <nav className="rail">
           <div className="logo">V</div>
           <button
@@ -427,6 +457,17 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Gallery</span>
           </button>
           <button
+            className={"rail-btn" + (view === "chat" ? " on" : "")}
+            onClick={() => setView("chat")}
+            aria-label="Chat"
+          >
+            <span className="rail-ico">
+              <MessageCircle size={20} />
+              {chat.unread > 0 && view !== "chat" && <i className="dot" />}
+            </span>
+            <span>Chat</span>
+          </button>
+          <button
             className={"rail-btn" + (view === "profile" ? " on" : "")}
             onClick={() => setView("profile")}
             aria-label="Profile"
@@ -434,7 +475,14 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <User size={20} />
             <span>Profile</span>
           </button>
-
+          <button
+            className="rail-btn warn spacer"
+            onClick={clearAll}
+            aria-label="Clear all events"
+          >
+            <Trash2 size={20} />
+            <span>Clear all</span>
+          </button>
           <button
             className="rail-btn"
             onClick={() => supabase.auth.signOut()}
@@ -446,55 +494,66 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </nav>
 
         <main className="main">
-          <header className="top">
-            <div className="hello-row">
-              <Avatar
-                url={me.avatar_url}
-                name={me.display_name}
-                color={colorOf(member.user_id)}
-                size="md"
-              />
-              <div>
-                <h1 className="hello">
-                  {greeting()}, {member.display_name}
-                </h1>
-                <p className="muted">
-                  {partner ? (
-                    <>
-                      <button className="linklike" onClick={openPartner}>
-                        Shared with {partner.display_name}
-                      </button>
-                      {partner.about && (
-                        <span className="status"> · {partner.about}</span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      Invite code:{" "}
-                      <button className="code" onClick={copyCode}>
-                        {space.code} <Copy size={12} /> {copied && "Copied"}
-                      </button>
-                    </>
-                  )}
-                </p>
+          {view !== "chat" && (
+            <header className="top">
+              <div className="hello-row">
+                <Avatar
+                  url={me.avatar_url}
+                  name={me.display_name}
+                  color={colorOf(member.user_id)}
+                  size="md"
+                />
+                <div>
+                  <h1 className="hello">
+                    {greeting()}, {member.display_name}
+                  </h1>
+                  <p className="muted">
+                    {partner ? (
+                      <>
+                        <button className="linklike" onClick={openPartner}>
+                          Shared with {partner.display_name}
+                        </button>
+                        {partner.about && (
+                          <span className="status"> · {partner.about}</span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        Invite code:{" "}
+                        <button className="code" onClick={copyCode}>
+                          {space.code} <Copy size={12} /> {copied && "Copied"}
+                        </button>
+                      </>
+                    )}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="top-right">
-              <Clocks tz={tz} />
-              {(view === "month" || view === "year") && (
-                <label className="search">
-                  <Search size={16} />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search events"
-                  />
-                </label>
-              )}
-            </div>
-          </header>
+              <div className="top-right">
+                <Clocks tz={tz} />
+                {(view === "month" || view === "year") && (
+                  <label className="search">
+                    <Search size={16} />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search events"
+                    />
+                  </label>
+                )}
+              </div>
+            </header>
+          )}
 
-          {view === "today" ? (
+          {view === "chat" ? (
+            <Chat
+              chat={chat}
+              call={callApi}
+              me={me}
+              partner={partner}
+              memberById={memberById}
+              colorOf={colorOf}
+            />
+          ) : view === "today" ? (
             <Dashboard
               me={me}
               partner={partner}
@@ -786,7 +845,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </main>
       </div>
 
-      {view !== "gallery" && view !== "profile" && (
+      {view !== "gallery" && view !== "profile" && view !== "chat" && (
         <button
           className="fab"
           onClick={() => openNew(view === "today" ? ymd(new Date()) : selected)}
@@ -795,6 +854,17 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           <Plus size={26} />
         </button>
       )}
+
+      <CallOverlay
+        api={callApi}
+        partner={partner}
+        color={partner ? colorOf(partner.user_id) : undefined}
+        name={
+          partner
+            ? chat.settings.nicknames?.[partner.user_id] || partner.display_name
+            : ""
+        }
+      />
 
       {form && (
         <EventForm
