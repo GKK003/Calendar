@@ -1,24 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
-  <!-- Solid Premium Pastel Pink Background -->
-  <rect width="512" height="512" rx="112" fill="#f472b6" />
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="paper" x1="54" y1="32" x2="440" y2="484" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9F4"/>
+      <stop offset="1" stop-color="#F1FAF8"/>
+    </linearGradient>
+    <linearGradient id="header" x1="117" y1="135" x2="394" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9F4EE"/>
+      <stop offset=".52" stop-color="#E7F0FF"/>
+      <stop offset="1" stop-color="#F2E6FA"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="184" y1="217" x2="278" y2="303" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A899EE"/>
+      <stop offset="1" stop-color="#8073D0"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="224" y1="237" x2="331" y2="327" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#75D3C2"/>
+      <stop offset="1" stop-color="#4EB9A8"/>
+    </linearGradient>
+    <filter id="shadow" x="62" y="91" width="388" height="374" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="13"/>
+      <feOffset dy="12"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".13"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="card-clip"><rect x="108" y="126" width="296" height="280" rx="42"/></clipPath>
+  </defs>
 
-  <!-- Inner Soft Container Frame -->
-  <rect x="36" y="36" width="440" height="440" rx="88" fill="#fbcfe8" />
+  <!-- Soft, full-bleed background remains safe when an OS applies its own icon mask. -->
+  <rect width="512" height="512" fill="url(#paper)"/>
+  <circle cx="88" cy="106" r="82" fill="#F7E9F2" opacity=".45"/>
+  <circle cx="438" cy="414" r="112" fill="#DDF5EE" opacity=".52"/>
+  <circle cx="408" cy="104" r="5" fill="#F2C7B6"/>
+  <circle cx="101" cy="405" r="4" fill="#C9BDF3"/>
 
-  <!-- Crisp, Bold, Non-Basic Custom "S" Geometry -->
-  <path d="M 360 160 
-           C 360 115, 305 96, 235 104 
-           C 165 112, 136 148, 140 196 
-           C 145 244, 195 260, 260 276 
-           C 335 294, 372 320, 364 384 
-           C 356 440, 285 452, 215 448 
-           C 145 444, 120 404, 120 380" 
-        fill="none" 
-        stroke="#18181b" 
-        stroke-width="56" 
-        stroke-linecap="round" 
-        stroke-linejoin="round" />
+  <!-- Calendar card and its cool, pearly header. -->
+  <g filter="url(#shadow)">
+    <rect x="108" y="126" width="296" height="280" rx="42" fill="#FFFEFC"/>
+    <g clip-path="url(#card-clip)">
+      <path d="M108 168c0-23.196 18.804-42 42-42h212c23.196 0 42 18.804 42 42v58H108v-58Z" fill="url(#header)"/>
+      <path d="M108 218h296" stroke="#FFFFFF" stroke-opacity=".78" stroke-width="3"/>
+    </g>
+    <rect x="184" y="109" width="24" height="68" rx="12" fill="#A8DCD4" stroke="#FFFEFC" stroke-width="8"/>
+    <rect x="304" y="109" width="24" height="68" rx="12" fill="#C2B4ED" stroke="#FFFEFC" stroke-width="8"/>
+  </g>
 
-  <!-- Precision Sync Indicator Pip -->
-  <circle cx="364" cy="120" r="18" fill="#18181b" />
+  <!-- Two flowing arrows meet in a gentle, continuous sync loop. -->
+  <path d="M194 294c-21-25-17-57 7-73 22-15 49-12 71 6" fill="none" stroke="url(#violet)" stroke-width="21" stroke-linecap="round"/>
+  <path d="m269 211 24 20-31 7 7-27Z" fill="#8E80D8"/>
+  <path d="M318 247c21 25 17 57-7 73-22 15-49 12-71-6" fill="none" stroke="url(#mint)" stroke-width="21" stroke-linecap="round"/>
+  <path d="m243 330-24-20 31-7-7 27Z" fill="#57B9A9"/>
+
+  <!-- A small shared date row anchors the symbol as a calendar. -->
+  <circle cx="196" cy="367" r="8" fill="#D9F2EC"/>
+  <circle cx="256" cy="367" r="8" fill="#E5E0FA"/>
+  <circle cx="316" cy="367" r="8" fill="#F5DDD5"/>
+
+  <!-- A tiny glint gives the center a warm, memorable point of focus. -->
+  <path d="M256 258c3 10 7 14 17 17-10 3-14 7-17 17-3-10-7-14-17-17 10-3 14-7 17-17Z" fill="#FFFDF9"/>
 </svg>
