@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { format, parseISO } from 'date-fns'
-import { CalendarDays, MessageCircle, Plus, Sparkles } from 'lucide-react'
+import { CalendarDays, MapPin, MessageCircle, Plus, Sparkles } from 'lucide-react'
 import './dashboard.css'
 import './gallery.css'
 import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { Composer, PostCard } from './Posts.jsx'
-import { TYPES, ZONES, clockIn, greeting, sortEvents, timeLabel, ymd, zoneOfCity } from './lib.js'
+import { TYPES, ZONES, clockIn, greeting, mapHref, sortEvents, timeLabel, ymd, zoneOfCity } from './lib.js'
 
 function ZoneClock({ zone }) {
   const [now, setNow] = useState(new Date())
@@ -27,20 +27,33 @@ function ZoneClock({ zone }) {
 function EventRow({ e, owner, color, showDate, onOpen }) {
   const special = e.type === 'special'
   return (
-    <button className={'drow' + (special ? ' special' : '')} onClick={() => onOpen(e)}>
-      <i style={{ background: TYPES[e.type].color }} />
-      <span className="drow-main">
-        <strong>
-          {special && <Sparkles size={14} className="sd-inline" />}
-          {e.title}
-        </strong>
-        <small>
-          {showDate ? `${format(parseISO(e.date), 'EEE d MMM')} · ` : ''}
-          {timeLabel(e)}
-        </small>
-      </span>
-      {owner && <Avatar url={owner.avatar_url} name={owner.display_name} color={color} />}
-    </button>
+    <div className="drow-wrap">
+      <button className={'drow' + (special ? ' special' : '')} onClick={() => onOpen(e)}>
+        <i style={{ background: TYPES[e.type].color }} />
+        <span className="drow-main">
+          <strong>
+            {special && <Sparkles size={14} className="sd-inline" />}
+            {e.title}
+          </strong>
+          <small>
+            {showDate ? `${format(parseISO(e.date), 'EEE d MMM')} · ` : ''}
+            {timeLabel(e)}
+          </small>
+        </span>
+        {owner && <Avatar url={owner.avatar_url} name={owner.display_name} color={color} />}
+      </button>
+      {mapHref(e.place) && (
+        <a
+          className="drow-map"
+          href={mapHref(e.place)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open map for ${e.title}`}
+        >
+          <MapPin size={16} /> <span>Open map</span>
+        </a>
+      )}
+    </div>
   )
 }
 
