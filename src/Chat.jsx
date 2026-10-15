@@ -86,11 +86,13 @@ function Voice({ url, seconds }) {
 function CallRow({ m, mine, onCall }) {
   const video = !!m.meta?.video
   const s = m.meta?.status
+  const stale = s === 'ringing' && Date.now() - parseISO(m.created_at) > 60000
   let text
-  if (s === 'missed') text = mine ? 'No answer' : `Missed ${video ? 'video' : 'voice'} call`
+  if (s === 'ringing' && !stale) text = mine ? 'Calling…' : `Incoming ${video ? 'video' : 'voice'} call`
+  else if (s === 'ringing' || s === 'missed') text = mine ? 'No answer' : `Missed ${video ? 'video' : 'voice'} call`
   else if (s === 'declined') text = mine ? 'Call declined' : 'You declined'
   else text = `${video ? 'Video' : 'Voice'} call · ${mmss(m.meta?.seconds || 0)}`
-  const bad = s === 'missed' && !mine
+  const bad = (s === 'missed' || stale) && !mine
   return (
     <div className="call-row">
       <span className={bad ? 'bad' : ''}>
@@ -102,7 +104,7 @@ function CallRow({ m, mine, onCall }) {
   )
 }
 
-export default function Chat({ chat, call, me, partner, memberById, colorOf }) {
+export default function Chat({ chat, call, push, me, partner, memberById, colorOf }) {
   const [text, setText] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -554,6 +556,7 @@ export default function Chat({ chat, call, me, partner, memberById, colorOf }) {
           chat={chat}
           me={me}
           partner={partner}
+          push={push}
           nameOf={nameOf}
           memberById={memberById}
           onClose={() => setSettingsOpen(false)}
@@ -563,14 +566,11 @@ export default function Chat({ chat, call, me, partner, memberById, colorOf }) {
   )
 }
 
-function Settings_({ chat, me, partner, memberById, onClose }) {
+function Settings_({ chat, push, me, partner, memberById, onClose }) {
   const { settings } = chat
   const ids = [me.user_id, partner?.user_id].filter(Boolean)
   const [nick, setNick] = useState(() => Object.fromEntries(ids.map((id) => [id, settings.nicknames?.[id] || ''])))
   const [err, setErr] = useState('')
-  const canNotify = typeof Notification !== 'undefined'
-  const [perm, setPerm] = useState(canNotify ? Notification.permission : 'denied')
-
   async function save(patch) {
     const p = await chat.saveSettings(patch)
     if (p) setErr(p)
@@ -618,16 +618,21 @@ function Settings_({ chat, me, partner, memberById, onClose }) {
           </div>
         </div>
 
-        {canNotify && (
+        {push && push.state !== 'unavailable' && (
           <div className="set-block">
             <strong>Notifications</strong>
-            {perm === 'granted' ? (
-              <p className="muted small"><Bell size={13} /> On. You get an alert for new messages while the app is open in another tab or window.</p>
-            ) : perm === 'denied' ? (
-              <p className="muted small">Blocked in your browser settings.</p>
-            ) : (
-              <button type="button" className="btn ghost" onClick={async () => setPerm(await Notification.requestPermission())}>Turn on notifications</button>
+            {push.state === 'on' && (
+              <>
+                <p className="muted small"><Bell size={13} /> On for this phone. You get messages and ringing calls even when the app is closed.</p>
+                <button type="button" className="btn ghost" onClick={push.disable}>Turn off</button>
+              </>
             )}
+            {push.state === 'off' && (
+              <button type="button" className="btn ghost" onClick={push.enable}>Turn on notifications</button>
+            )}
+            {push.state === 'install' && <p className="muted small">On iPhone, first add the site to your Home Screen and open it from there.</p>}
+            {push.state === 'denied' && <p className="muted small">Notifications are blocked. Allow them for this app in your phone settings.</p>}
+            {push.err && <p className="error">{push.err}</p>}
           </div>
         )}
 

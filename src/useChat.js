@@ -80,7 +80,7 @@ export default function useChat(space, userId, partnerId, partnerName) {
       .channel('chat-db-' + space.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: f }, (p) => {
         const m = p.new
-        if (m.user_id !== userId && m.kind !== 'call' && document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        if (!import.meta.env.VITE_VAPID_PUBLIC_KEY && m.user_id !== userId && m.kind !== 'call' && document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           try {
             new Notification(nameRef.current || 'New message', { body: preview(m), tag: 'chat' })
           } catch {
@@ -169,12 +169,22 @@ export default function useChat(space, userId, partnerId, partnerName) {
     return null
   }
 
-  async function logCall({ video, status, seconds }) {
-    await supabase.from('messages').insert({
-      space_id: space.id,
-      kind: 'call',
-      meta: { video, status, seconds: Math.round(seconds || 0) },
-    })
+  // a call is one row: it starts as "ringing" (this also rings the other phone) and is updated when it ends
+  async function beginCall(video) {
+    const { data } = await supabase
+      .from('messages')
+      .insert({ space_id: space.id, kind: 'call', meta: { video, status: 'ringing', seconds: 0 } })
+      .select('id')
+      .single()
+    return data?.id || null
+  }
+
+  async function finishCall(id, { video, status, seconds }) {
+    if (!id) return
+    await supabase
+      .from('messages')
+      .update({ meta: { video, status, seconds: Math.round(seconds || 0) } })
+      .eq('id', id)
   }
 
   async function edit(id, body) {
@@ -240,6 +250,6 @@ export default function useChat(space, userId, partnerId, partnerName) {
     messages, reactions, urls, settings, typing, online, hasMore, unread,
     partnerRead: reads[partnerId] || '',
     loadMore: () => setLimit((n) => n + PAGE),
-    send, edit, unsend, react, saveSettings, markRead, notifyTyping, logCall,
+    send, edit, unsend, react, saveSettings, markRead, notifyTyping, beginCall, finishCall,
   }
 }

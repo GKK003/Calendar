@@ -19,7 +19,7 @@ function iceServers() {
 const IDLE = { status: 'idle', video: false, incoming: false, startedAt: 0 }
 
 // Voice and video calls between the two of you (WebRTC; the signals go through Supabase Realtime)
-export default function useCall({ space, userId, onLog }) {
+export default function useCall({ space, userId, calls }) {
   const [call, setCall] = useState(IDLE)
   const [local, setLocal] = useState(null)
   const [remote, setRemote] = useState(null)
@@ -32,8 +32,9 @@ export default function useCall({ space, userId, onLog }) {
   const chan = useRef(null)
   const ice = useRef([])
   const ringTimer = useRef(null)
-  const logRef = useRef(onLog)
-  logRef.current = onLog
+  const rowId = useRef(null) // promise of the chat row that stands for this call
+  const logRef = useRef(calls)
+  logRef.current = calls
 
   const put = (next) => {
     st.current = { ...st.current, ...next }
@@ -63,7 +64,9 @@ export default function useCall({ space, userId, onLog }) {
     const c = st.current
     if (!c.incoming && c.status !== 'idle') {
       const seconds = c.startedAt ? (Date.now() - c.startedAt) / 1000 : 0
-      logRef.current?.({ video: c.video, status, seconds })
+      const row = rowId.current
+      rowId.current = null
+      row?.then((id) => logRef.current?.finish(id, { video: c.video, status, seconds }))
     }
     cleanup()
   }
@@ -114,6 +117,7 @@ export default function useCall({ space, userId, onLog }) {
     put({ status: 'calling', video, incoming: false, startedAt: 0 })
     if (!(await getMedia(video))) return cleanup()
     send('invite', { video })
+    rowId.current = logRef.current?.begin(video) || null
     ringTimer.current = setTimeout(() => {
       send('cancel')
       finish('missed')
@@ -155,6 +159,7 @@ export default function useCall({ space, userId, onLog }) {
       const c = st.current
       try {
         if (p.type === 'invite') {
+          if (c.status === 'ringing' && c.incoming) return
           if (c.status !== 'idle') return ch.send({ type: 'broadcast', event: 'sig', payload: { from: userId, type: 'busy' } })
           put({ status: 'ringing', video: !!p.video, incoming: true, startedAt: 0 })
         } else if (p.type === 'cancel' && c.status === 'ringing') {
@@ -166,6 +171,7 @@ export default function useCall({ space, userId, onLog }) {
           finish('declined')
         } else if (p.type === 'accept' && c.status === 'calling') {
           clearTimeout(ringTimer.current)
+          rowId.current?.then((id) => logRef.current?.finish(id, { video: c.video, status: 'connected', seconds: 0 }))
           put({ status: 'connecting' })
           const peer = makePc()
           const offer = await peer.createOffer()
@@ -198,6 +204,30 @@ export default function useCall({ space, userId, onLog }) {
       supabase.removeChannel(ch)
       chan.current = null
     }
+    // eslint-disable-next-line
+  }, [space.id, userId])
+
+  // opened from a "calling" notification: if she is still ringing, show the call
+  useEffect(() => {
+    async function checkPending() {
+      if (document.hidden || st.current.status !== 'idle') return
+      const since = new Date(Date.now() - 40000).toISOString()
+      const { data } = await supabase
+        .from('messages')
+        .select('id, meta')
+        .eq('kind', 'call')
+        .neq('user_id', userId)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      const m = data?.[0]
+      if (m && m.meta?.status === 'ringing' && st.current.status === 'idle') {
+        put({ status: 'ringing', video: !!m.meta.video, incoming: true, startedAt: 0 })
+      }
+    }
+    checkPending()
+    document.addEventListener('visibilitychange', checkPending)
+    return () => document.removeEventListener('visibilitychange', checkPending)
     // eslint-disable-next-line
   }, [space.id, userId])
 
