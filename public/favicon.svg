@@ -12,13 +12,29 @@
       <stop stop-color="#7AD2C1"/>
       <stop offset="1" stop-color="#51B9A8"/>
     </linearGradient>
+    <linearGradient id="calendar" x1="156" y1="221" x2="355" y2="394" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D8F2EB"/>
+      <stop offset=".56" stop-color="#E7E8F8"/>
+      <stop offset="1" stop-color="#F7E3E5"/>
+    </linearGradient>
+    <linearGradient id="calendar-header" x1="146" y1="220" x2="368" y2="263" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BDEBE0"/>
+      <stop offset=".53" stop-color="#D1CDF1"/>
+      <stop offset="1" stop-color="#E9D5EF"/>
+    </linearGradient>
+    <clipPath id="calendar-shape">
+      <path d="M185 220h142a40 40 0 0 1 40 40v82a44 44 0 0 1-44 44H189a44 44 0 0 1-44-44v-82a40 40 0 0 1 40-40Z"/>
+    </clipPath>
   </defs>
 
   <!-- Transparent canvas: only the pastel calendar mark is drawn. -->
   <g transform="translate(-92.16 -92.16) scale(1.36)">
-  <path d="M145 220h222v122a44 44 0 0 1-44 44H189a44 44 0 0 1-44-44V220Z"
-        fill="none" stroke="url(#frame)" stroke-width="16" stroke-linejoin="round"/>
-  <path d="M145 231h222" fill="none" stroke="#C8EAE4" stroke-width="12" stroke-linecap="round"/>
+  <path d="M185 220h142a40 40 0 0 1 40 40v82a44 44 0 0 1-44 44H189a44 44 0 0 1-44-44v-82a40 40 0 0 1 40-40Z"
+        fill="url(#calendar)" stroke="url(#frame)" stroke-width="12" stroke-linejoin="round"/>
+  <g clip-path="url(#calendar-shape)">
+    <path d="M145 220h222v43H145z" fill="url(#calendar-header)"/>
+    <path d="M145 263h222" fill="none" stroke="#FFFFFF" stroke-opacity=".78" stroke-width="8"/>
+  </g>
 
   <!-- Soft, rounded binding loops. -->
   <path d="M203 153v74" fill="none" stroke="#72C8BA" stroke-width="20" stroke-linecap="round"/>
