@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
-import { makePoster, uploadWithProgress } from "./movieUpload.js";
+import { makePoster, putSmall, r2, uploadToR2 } from "./movieUpload.js";
 import { LIBRARY, TABS } from "./library.js";
 import "./cinema.css";
 
@@ -66,13 +66,23 @@ export default function Cinema({ space, userId }) {
       .eq("space_id", space.id)
       .order("created_at", { ascending: false });
     if (error || !data) return;
-    const posters = data.filter((r) => r.poster_path).map((r) => r.poster_path);
     const map = {};
-    if (posters.length) {
+    const sbPosters = data
+      .filter((r) => r.poster_path && r.store !== "r2")
+      .map((r) => r.poster_path);
+    const r2Posters = data
+      .filter((r) => r.poster_path && r.store === "r2")
+      .map((r) => r.poster_path);
+    if (sbPosters.length) {
       const { data: signed } = await supabase.storage
         .from("movies")
-        .createSignedUrls(posters, 21600);
+        .createSignedUrls(sbPosters, 21600);
       (signed || []).forEach((x) => (map[x.path] = x.signedUrl));
+    }
+    if (r2Posters.length) {
+      try {
+        Object.assign(map, (await r2({ action: "get", keys: r2Posters })).urls);
+      } catch {}
     }
     setUploaded(
       data.map((r) => ({
@@ -83,6 +93,7 @@ export default function Cinema({ space, userId }) {
         year: r.year || "",
         desc: r.description || "",
         path: r.path,
+        store: r.store || "supabase",
         posterPath: r.poster_path,
         poster: map[r.poster_path] || "",
         owner: r.user_id,
@@ -115,17 +126,29 @@ export default function Cinema({ space, userId }) {
     if (!movie) return;
     if (movie.src) return setSrc(movie.src);
     let dead = false;
-    supabase.storage
-      .from("movies")
-      .createSignedUrl(movie.path, 21600)
-      .then(({ data, error }) => {
-        if (dead) return;
-        if (error || !data)
-          return setSrcError(
-            "Could not load this video. It may have been deleted.",
-          );
-        setSrc(data.signedUrl);
-      });
+    const fail = () =>
+      !dead &&
+      setSrcError("Could not load this video. It may have been deleted.");
+    if (movie.store === "r2") {
+      r2({ action: "get", keys: [movie.path] })
+        .then((d) =>
+          dead
+            ? null
+            : d.urls[movie.path]
+              ? setSrc(d.urls[movie.path])
+              : fail(),
+        )
+        .catch(fail);
+    } else {
+      supabase.storage
+        .from("movies")
+        .createSignedUrl(movie.path, 21600)
+        .then(({ data, error }) => {
+          if (dead) return;
+          if (error || !data) return fail();
+          setSrc(data.signedUrl);
+        });
+    }
     return () => {
       dead = true;
     };
@@ -324,9 +347,14 @@ export default function Cinema({ space, userId }) {
     )
       return;
     if (movieRef.current?.id === m.id) pick(null);
-    await supabase.storage
-      .from("movies")
-      .remove([m.path, m.posterPath].filter(Boolean));
+    const files = [m.path, m.posterPath].filter(Boolean);
+    try {
+      if (m.store === "r2") await r2({ action: "delete", keys: files });
+      else await supabase.storage.from("movies").remove(files);
+    } catch (e) {
+      alert("Could not delete the file: " + e.message);
+      return;
+    }
     await supabase.from("movies").delete().eq("id", m.id);
     loadMovies();
   };
@@ -515,7 +543,7 @@ function AddMovie({ space, userId, onClose, onDone }) {
   const [pct, setPct] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const xhr = useRef(null);
+  const cancel = useRef(null);
 
   const choose = (f) => {
     setFile(f);
@@ -533,29 +561,23 @@ function AddMovie({ space, userId, onClose, onDone }) {
     setBusy(true);
     setErr("");
     setPct(0);
-    const id = crypto.randomUUID();
-    const ext = (file.name.split(".").pop() || "mp4")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-    const path = space.id + "/" + id + "." + ext;
-    let posterPath = null;
+    let key = null;
+    let posterKey = null;
     try {
-      const blob = await makePoster(file);
-      if (blob) {
-        const pp = space.id + "/" + id + "-poster.jpg";
-        const { error } = await supabase.storage
-          .from("movies")
-          .upload(pp, blob, { contentType: "image/jpeg" });
-        if (!error) posterPath = pp;
-      }
-      await uploadWithProgress({
-        path,
+      const posterBlob = await makePoster(file);
+      key = await uploadToR2({
         file,
         onProgress: setPct,
-        onXhr: (x) => (xhr.current = x),
+        onCancel: (fn) => (cancel.current = fn),
       });
+      if (posterBlob) {
+        try {
+          const pk = key.replace(/\.[^.]+$/, "") + "-poster.jpg";
+          await putSmall(pk, posterBlob);
+          posterKey = pk;
+        } catch {}
+      }
       const { error } = await supabase.from("movies").insert({
-        id,
         space_id: space.id,
         user_id: userId,
         title: title.trim(),
@@ -566,24 +588,25 @@ function AddMovie({ space, userId, onClose, onDone }) {
           .filter(Boolean),
         year: parseInt(year) || null,
         description: desc.trim(),
-        path,
-        poster_path: posterPath,
+        path: key,
+        poster_path: posterKey,
         size: file.size,
+        store: "r2",
       });
       if (error) throw error;
       onDone();
       onClose();
     } catch (e) {
-      await supabase.storage
-        .from("movies")
-        .remove([path, posterPath].filter(Boolean));
+      const leftovers = [key, posterKey].filter(Boolean);
+      if (leftovers.length)
+        r2({ action: "delete", keys: leftovers }).catch(() => {});
       setErr(e.message === "cancelled" ? "" : e.message || "Upload failed");
       setBusy(false);
     }
   };
 
   const close = () => {
-    xhr.current?.abort();
+    cancel.current?.();
     onClose();
   };
 
