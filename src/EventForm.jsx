@@ -77,11 +77,12 @@ export default function EventForm({
     repeatWeeks: 12,
     repeatEvery: 1,
     applyAll: Boolean(initial.series_id),
+    zone: tz,
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const downOnBackdrop = useRef(false);
-  const zone = tz;
+  const zone = f.zone;
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleDay = (n) =>
     setF((p) => ({
@@ -198,6 +199,21 @@ export default function EventForm({
           <Clocks compact tz={tz} />
           {a && (
             <>
+              <div className="tz-row">
+                <span className="small muted">Times above are in</span>
+                <div className="seg tiny">
+                  {ZONES.map((z) => (
+                    <button
+                      type="button"
+                      key={z.id}
+                      className={zone === z.id ? "on" : ""}
+                      onClick={() => set("zone", z.id)}
+                    >
+                      {z.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="tz-result">
                 {f.start}–{f.end} {here.label} ={" "}
                 <strong>

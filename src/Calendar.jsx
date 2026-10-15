@@ -42,6 +42,7 @@ import {
   timeLabel,
   uuid,
   ymd,
+  zoneLabel,
   zoneOfCity,
 } from "./lib.js";
 import EventForm from "./EventForm.jsx";
@@ -198,6 +199,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     if (note !== (i.note || null)) patch.note = note;
     if (place !== (i.place || null)) patch.place = place;
     const timeChanged =
+      f.zone !== tz ||
       start !== (i.start_time ? hm(i.start_time) : null) ||
       end !== (i.end_time ? hm(i.end_time) : null);
 
@@ -213,10 +215,10 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             .from("events")
             .update({
               ...patch,
-              date: row.id === i.id ? f.date : localizeEvent(row, tz).date,
+              date: row.id === i.id ? f.date : localizeEvent(row, f.zone).date,
               start_time: start,
               end_time: end,
-              tz,
+              tz: f.zone,
             })
             .eq("id", row.id),
         ),
@@ -234,7 +236,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       if (f.date !== i.date) {
         const { error } = await supabase
           .from("events")
-          .update({ date: f.date, start_time: start, end_time: end, tz })
+          .update({
+            date: f.date,
+            start_time: start,
+            end_time: end,
+            tz: f.zone,
+          })
           .eq("id", i.id);
         if (error) return error.message;
       }
@@ -256,7 +263,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       space_id: space.id,
       title: f.title.trim(),
       type: f.type,
-      tz,
+      tz: f.zone,
       note: f.note.trim() || null,
       place: f.place.trim() || null,
       start_time: f.allDay ? null : f.start || null,
@@ -672,9 +679,18 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                             {e.note && (
                               <span className="muted small note">{e.note}</span>
                             )}
+                            {e.origin && (
+                              <span className="muted small note">
+                                Set as {e.origin.start_time}
+                                {e.origin.end_time &&
+                                  ` – ${e.origin.end_time}`}{" "}
+                                {zoneLabel(e.origin.tz)}
+                              </span>
+                            )}
                             <span className="meta">
                               <span>
                                 <Clock size={13} /> {timeLabel(e)}
+                                {e.start_time && ` ${zoneLabel(tz)}`}
                               </span>
                               {owner && (
                                 <Avatar
