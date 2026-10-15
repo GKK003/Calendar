@@ -172,30 +172,125 @@
 }
 
 /* ---- Add movie (append to cinema.css) ---- */
-.cin-bar-r { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.cin-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.cin-err { color: #d64545; font-size: 14px; margin: 0; }
+.cin-bar-r {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cin-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cin-err {
+  color: #d64545;
+  font-size: 14px;
+  margin: 0;
+}
 .cin-modal {
-  position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
-  padding: 16px; background: rgba(0, 0, 0, 0.45);
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
 }
 .cin-form {
-  width: 100%; max-width: 460px; max-height: 92vh; overflow: auto;
-  display: flex; flex-direction: column; gap: 12px; padding: 18px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 92vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
 }
-.cin-form-head { display: flex; align-items: center; justify-content: space-between; }
-.cin-form-head h2 { margin: 0; font-size: 18px; font-weight: 500; }
+.cin-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cin-form-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
 .cin-file {
-  display: flex; align-items: center; gap: 10px; padding: 16px; cursor: pointer;
-  border: 1.5px dashed var(--muted); border-radius: 12px; color: var(--text); word-break: break-all;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  cursor: pointer;
+  border: 1.5px dashed var(--muted);
+  border-radius: 12px;
+  color: var(--text);
+  word-break: break-all;
 }
-.cin-file input { display: none; }
-.cin-hint { margin: -4px 0 0; font-size: 12px; }
+.cin-file input {
+  display: none;
+}
+.cin-hint {
+  margin: -4px 0 0;
+  font-size: 12px;
+}
 .cin-in {
-  width: 100%; padding: 10px 12px; border-radius: 10px; font: inherit; color: var(--text);
-  background: var(--tint); border: 1px solid transparent;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--tint);
+  border: 1px solid transparent;
 }
-.cin-row { display: grid; grid-template-columns: 1fr 100px; gap: 10px; }
-.cin-prog { position: relative; height: 28px; border-radius: 999px; overflow: hidden; background: var(--tint); }
-.cin-prog div { position: absolute; inset: 0 auto 0 0; background: var(--green-soft); transition: width 0.2s; }
-.cin-prog span { position: relative; display: block; text-align: center; line-height: 28px; font-size: 13px; }
+.cin-row {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 10px;
+}
+.cin-prog {
+  position: relative;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--tint);
+}
+.cin-prog div {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--green-soft);
+  transition: width 0.2s;
+}
+.cin-prog span {
+  position: relative;
+  display: block;
+  text-align: center;
+  line-height: 28px;
+  font-size: 13px;
+}
+
+/* ---- Delete from library ---- */
+.cin-item {
+  position: relative;
+}
+.cin-del {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  opacity: 0.9;
+}
+.cin-del:hover {
+  background: #d64545;
+}
