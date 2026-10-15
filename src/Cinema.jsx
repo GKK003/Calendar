@@ -561,15 +561,27 @@ function AddMovie({ space, userId, onClose, onDone }) {
     setBusy(true);
     setErr("");
     setPct(0);
+    let cancelled = false;
+    cancel.current = () => {
+      cancelled = true;
+    };
     let key = null;
     let posterKey = null;
     try {
       const posterBlob = await makePoster(file);
+      if (cancelled) throw new Error("cancelled");
       key = await uploadToR2({
         file,
         onProgress: setPct,
-        onCancel: (fn) => (cancel.current = fn),
+        onCancel: (fn) => {
+          cancel.current = () => {
+            cancelled = true;
+            fn();
+          };
+          if (cancelled) fn();
+        },
       });
+      if (cancelled) throw new Error("cancelled");
       if (posterBlob) {
         try {
           const pk = key.replace(/\.[^.]+$/, "") + "-poster.jpg";
@@ -577,6 +589,7 @@ function AddMovie({ space, userId, onClose, onDone }) {
           posterKey = pk;
         } catch {}
       }
+      if (cancelled) throw new Error("cancelled");
       const { error } = await supabase.from("movies").insert({
         space_id: space.id,
         user_id: userId,

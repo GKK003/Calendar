@@ -14,14 +14,16 @@ create table if not exists push_subscriptions (
 
 alter table push_subscriptions enable row level security;
 drop policy if exists "push read own" on push_subscriptions;
-create policy "push read own" on push_subscriptions for select using (user_id = auth.uid());
+create policy "push read own" on push_subscriptions for select to authenticated using (user_id = auth.uid());
 drop policy if exists "push insert own" on push_subscriptions;
-create policy "push insert own" on push_subscriptions for insert
-  with check (user_id = auth.uid() and space_id = my_space());
+create policy "push insert own" on push_subscriptions for insert to authenticated
+  with check (user_id = auth.uid() and space_id = public.my_space());
 drop policy if exists "push update own" on push_subscriptions;
-create policy "push update own" on push_subscriptions for update using (user_id = auth.uid());
+create policy "push update own" on push_subscriptions for update to authenticated
+  using (user_id = auth.uid() and space_id = public.my_space())
+  with check (user_id = auth.uid() and space_id = public.my_space());
 drop policy if exists "push delete own" on push_subscriptions;
-create policy "push delete own" on push_subscriptions for delete using (user_id = auth.uid());
+create policy "push delete own" on push_subscriptions for delete to authenticated using (user_id = auth.uid());
 
 create extension if not exists pg_net;
 

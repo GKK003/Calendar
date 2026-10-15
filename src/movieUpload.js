@@ -51,6 +51,15 @@ function putWithProgress(url, blob, onBytes, track, headers = {}) {
 
 // Upload a big file to R2 in pieces. Returns the R2 key.
 export async function uploadToR2({ file, onProgress, onCancel }) {
+  if (!file?.size) throw new Error("Choose a non-empty video file.");
+  if (file.size > PART * 10_000)
+    throw new Error("This video is too large to upload in 10,000 parts.");
+  const xhrs = new Set();
+  let cancelled = false;
+  onCancel?.(() => {
+    cancelled = true;
+    xhrs.forEach((x) => x.abort());
+  });
   const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
   const type = file.type || "video/mp4";
   const { key, uploadId } = await r2({
@@ -58,13 +67,10 @@ export async function uploadToR2({ file, onProgress, onCancel }) {
     ext,
     contentType: type,
   });
-
-  const xhrs = new Set();
-  let cancelled = false;
-  onCancel?.(() => {
-    cancelled = true;
-    xhrs.forEach((x) => x.abort());
-  });
+  if (cancelled) {
+    r2({ action: "abort", key, uploadId }).catch(() => {});
+    throw new Error("cancelled");
+  }
 
   let sent = 0;
   const bump = (n) => {
@@ -89,6 +95,7 @@ export async function uploadToR2({ file, onProgress, onCancel }) {
             uploadId,
             partNumber: n,
           });
+          if (cancelled) throw new Error("cancelled");
           etag = await putWithProgress(url, blob, bump, (x) => xhrs.add(x));
           if (!etag)
             throw new Error(
@@ -114,6 +121,7 @@ export async function uploadToR2({ file, onProgress, onCancel }) {
     onProgress(100);
     return key;
   } catch (e) {
+    cancelled = true;
     xhrs.forEach((x) => x.abort());
     r2({ action: "abort", key, uploadId }).catch(() => {});
     throw e;

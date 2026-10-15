@@ -55,7 +55,7 @@ export default function Profile({ session, member, others = [], color, onSaved }
     setBusy(false)
     setMsg(
       aboutError
-        ? { ok: false, text: 'Name and color saved. The status needs one small database update (see README, "Profile").' }
+        ? { ok: false, text: `Name and color saved, but the status was not saved: ${aboutError.message}` }
         : { ok: true, text: 'Profile saved.' },
     )
   }
@@ -78,7 +78,7 @@ export default function Profile({ session, member, others = [], color, onSaved }
       setPhotoMsg({ ok: true, text: 'Photo updated.' })
     } catch (err) {
       const missing = /bucket|not found|avatar_url/i.test(err.message || '')
-      setPhotoMsg({ ok: false, text: missing ? 'Photos need a one-time database update (see README, "Profile photo").' : err.message })
+      setPhotoMsg({ ok: false, text: missing ? 'Photos need the database setup in supabase/social.sql.' : err.message })
     }
     setPhotoBusy(false)
   }

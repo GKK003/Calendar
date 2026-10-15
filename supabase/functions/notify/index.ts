@@ -13,10 +13,30 @@ webpush.setVapidDetails(
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+// Subscriptions are user supplied database values. Restrict delivery to known
+// browser push services so a forged endpoint cannot make this function POST to
+// an internal or attacker controlled URL.
+function isTrustedPushEndpoint(endpoint: unknown): endpoint is string {
+  if (typeof endpoint !== 'string' || endpoint.length > 4096) return false
+  try {
+    const url = new URL(endpoint)
+    if (url.protocol !== 'https:' || (url.port && url.port !== '443') || url.username || url.password) return false
+    const host = url.hostname.toLowerCase()
+    return host === 'fcm.googleapis.com'
+      || host === 'web.push.apple.com'
+      || host === 'push.services.mozilla.com'
+      || host === 'updates.push.services.mozilla.com'
+      || host === 'notify.windows.com'
+      || host.endsWith('.notify.windows.com')
+  } catch {
+    return false
+  }
+}
+
 async function push(subs: any[], payload: Record<string, unknown>) {
   const text = JSON.stringify(payload)
   await Promise.all(
-    subs.map(async (s) => {
+    subs.filter((s) => isTrustedPushEndpoint(s.endpoint)).map(async (s) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
