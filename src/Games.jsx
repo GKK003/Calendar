@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, RotateCcw, Users, Gamepad2, Grid3X3, Keyboard } from "lucide-react";
 import { supabase } from "./supabase.js";
 import VALID_WORDS from "./word-list.json";
+import { usePath, navigate } from "./router.js";
 import "./games.css";
 
 const WORDS = ["APPLE","BRAVE","CHAIR","DREAM","EARTH","FLAME","GRAPE","HEART","JUICE","KNIFE","LEMON","MUSIC","NIGHT","OCEAN","PEACH","QUIET","ROBOT","SMILE","TRAIN","WATER","PLANT","CLOUD","BREAD","LIGHT","HOUSE","GREEN","STONE","WORLD","PARTY","SUGAR","TIGER","RIVER","SHEEP","MOUSE","CROWN","BEACH","SWEET","HAPPY","MAGIC","PIZZA"];
@@ -19,7 +20,9 @@ const wordState = () => ({ answer: WORDS[Math.floor(Math.random()*WORDS.length)]
 const sudokuState = () => ({ puzzle: PUZZLE, solution: SOLUTION, values: PUZZLE.map(r=>r.slice()), selected: [0,0], status: "playing", lastBy: null });
 
 export default function Games({ space, member, members }) {
-  const [game, setGame] = useState("wordle");
+  const path = usePath();
+  const game = path.startsWith("/games/sudoku") ? "sudoku" : "wordle";
+  const setGame = (g) => navigate("/games/" + g);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
@@ -32,7 +35,15 @@ export default function Games({ space, member, members }) {
     setLoading(true);
     const { data, error } = await supabase.from("shared_games").select("*").eq("space_id", space.id).eq("game_type", game).maybeSingle();
     if (error) setNotice("Games database isn't set up yet. Run supabase/games.sql in your Supabase SQL Editor.");
-    else if (data) setSession(data);
+    else if (data) {
+      const ok = game === "wordle" ? Array.isArray(data.state?.guesses) : Array.isArray(data.state?.values) && Array.isArray(data.state?.puzzle) && Array.isArray(data.state?.solution);
+      if (ok) setSession(data);
+      else {
+        const fresh = game === "wordle" ? wordState() : sudokuState();
+        await supabase.from("shared_games").update({state:fresh, updated_by:member.user_id, updated_at:new Date().toISOString()}).eq("id", data.id);
+        setSession({ ...data, state: fresh });
+      }
+    }
     else {
       const initial_state = game === "wordle" ? wordState() : sudokuState();
       const { data: created, error: createError } = await supabase.from("shared_games").insert({space_id:space.id, game_type:game, state:initial_state, updated_by:member.user_id}).select().single();
@@ -49,7 +60,7 @@ export default function Games({ space, member, members }) {
     const channel = supabase.channel(`shared-game-${space.id}-${game}`)
       .on("postgres_changes", {event:"*", schema:"public", table:"shared_games", filter:`space_id=eq.${space.id}`}, payload => {
         const next = payload.new;
-        if (next?.game_type === game) setSession(current => !current || new Date(next.updated_at || 0) >= new Date(current.updated_at || 0) ? next : current);
+        if (next?.game_type === game) setSession(current => !current || current.game_type !== next.game_type || new Date(next.updated_at || 0) >= new Date(current.updated_at || 0) ? next : current);
       }).subscribe();
     const refresh = () => { if (document.visibilityState === "visible") load(); };
     window.addEventListener("focus", refresh);
@@ -73,7 +84,9 @@ export default function Games({ space, member, members }) {
     });
   };
   const reset = () => commit(game === "wordle" ? wordState() : sudokuState());
-  const state = session?.state;
+  const rawState = session && session.game_type === game ? session.state : null;
+  const validState = rawState && (game === "wordle" ? Array.isArray(rawState.guesses) : Array.isArray(rawState.values) && Array.isArray(rawState.puzzle) && Array.isArray(rawState.solution));
+  const state = validState ? rawState : null;
   const wordGuess = (letter) => {
     if (!state || state.status !== "playing") return;
     const current = (state.current || "");
@@ -88,14 +101,14 @@ export default function Games({ space, member, members }) {
     if (/^[A-Z]$/.test(letter) && current.length < 5) commit({...state,current:current+letter,lastBy:member.user_id});
   };
   const sudokuSet = (n) => {
-    if (!state || state.status === "won") return;
+    if (!state || !state.selected || state.status === "won") return;
     const [r,c] = state.selected;
     if (state.puzzle[r][c] !== 0) return;
     const values = state.values.map(row=>row.slice()); values[r][c] = n;
     const won = values.every((row,ri)=>row.every((v,ci)=>v === state.solution[ri][ci]));
     commit({...state,values,status:won?"won":"playing",lastBy:member.user_id});
   };
-  const selectCell = (r,c) => commit({...state,selected:[r,c],lastBy:member.user_id});
+  const selectCell = (r,c) => state && commit({...state,selected:[r,c],lastBy:member.user_id});
 
   useEffect(() => {
     const handleKeyDown = (event) => {

@@ -64,6 +64,7 @@ import Cinema from "./Cinema.jsx";
 import Games from "./Games.jsx";
 import CallOverlay from "./CallOverlay.jsx";
 import useChat from "./useChat.js";
+import { useView } from "./router.js";
 import useCall from "./useCall.js";
 import usePush from "./usePush.js";
 import usePosts from "./usePosts.js";
@@ -72,7 +73,7 @@ import "./special.css";
 export default function Calendar({ session, member, space, onProfileChange }) {
   const [cursor, setCursor] = useState(new Date());
   const [selected, setSelected] = useState(ymd(new Date()));
-  const [view, setView] = useState("today");
+  const [view, setView] = useView();
   const [profileTab, setProfileTab] = useState("me");
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([member]);
