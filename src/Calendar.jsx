@@ -254,7 +254,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       if (f.date !== i.date) {
         const { error } = await supabase
           .from("events")
-          .update({ date: f.date, start_time: start, end_time: end, tz: f.zone })
+          .update({
+            date: f.date,
+            start_time: start,
+            end_time: end,
+            tz: f.zone,
+          })
           .eq("id", i.id);
         if (error) return error.message;
       }
@@ -373,20 +378,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     load();
   }
 
-  async function clearAll() {
-    if (!confirm("Delete ALL events for both of you? This cannot be undone."))
-      return;
-    const word = prompt("Type DELETE to confirm");
-    if (word?.trim().toUpperCase() !== "DELETE") return;
-    const { error } = await supabase
-      .from("events")
-      .delete()
-      .eq("space_id", space.id);
-    if (error) return alert("Could not clear events: " + error.message);
-    setEvents([]);
-    load();
-  }
-
   function copyCode() {
     navigator.clipboard?.writeText(space.code);
     setCopied(true);
@@ -443,14 +434,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <User size={20} />
             <span>Profile</span>
           </button>
-          <button
-            className="rail-btn warn spacer"
-            onClick={clearAll}
-            aria-label="Clear all events"
-          >
-            <Trash2 size={20} />
-            <span>Clear all</span>
-          </button>
+
           <button
             className="rail-btn"
             onClick={() => supabase.auth.signOut()}
@@ -498,14 +482,14 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <div className="top-right">
               <Clocks tz={tz} />
               {(view === "month" || view === "year") && (
-              <label className="search">
-                <Search size={16} />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search events"
-                />
-              </label>
+                <label className="search">
+                  <Search size={16} />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search events"
+                  />
+                </label>
               )}
             </div>
           </header>
@@ -655,7 +639,9 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         {days.map((d) => {
                           const k = ymd(d);
                           const list = byDate[k] || [];
-                          const hasSpecial = list.some((e) => e.type === "special");
+                          const hasSpecial = list.some(
+                            (e) => e.type === "special",
+                          );
                           return (
                             <button
                               key={k}
@@ -677,7 +663,9 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                                 {list.slice(0, 2).map((e) => (
                                   <em
                                     key={e.id}
-                                    className={e.type === "special" ? "sd-em" : undefined}
+                                    className={
+                                      e.type === "special" ? "sd-em" : undefined
+                                    }
                                     style={{ "--c": TYPES[e.type].color }}
                                   >
                                     {e.title}
@@ -758,7 +746,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                             {e.origin && (
                               <span className="muted small note">
                                 Set as {e.origin.start_time}
-                                {e.origin.end_time && ` – ${e.origin.end_time}`}{" "}
+                                {e.origin.end_time &&
+                                  ` – ${e.origin.end_time}`}{" "}
                                 {zoneLabel(e.origin.tz)}
                               </span>
                             )}
