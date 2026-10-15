@@ -1470,8 +1470,9 @@ label.check {
     padding-top: 4px;
   }
 }
-
-body:has(.nav-drawer.open) {
-  overflow: hidden !important;
+body:has(.rail.menu-open),
+html:has(.rail.menu-open) {
+  overflow: hidden;
+  height: 100vh;
   height: 100dvh;
 }
