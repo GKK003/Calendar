@@ -499,6 +499,13 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Cinema</span>
           </button>
           <button
+            onClick={() => setCurrentView("games")}
+            className={`rail-btn ${currentView === "games" ? "on" : ""}`}
+          >
+            <span>🎮</span>
+            <span>Arcade</span>
+          </button>
+          <button
             className={"rail-btn" + (view === "chat" ? " on" : "")}
             onClick={() => {
               chat.closeChat();
