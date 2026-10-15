@@ -32,6 +32,7 @@ import {
   Home,
   Images,
   MessageCircle,
+  Film,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import {
@@ -58,6 +59,7 @@ import PartnerProfile from "./PartnerProfile.jsx";
 import Dashboard from "./Dashboard.jsx";
 import Gallery from "./Gallery.jsx";
 import Chat from "./Chat.jsx";
+import Cinema from "./Cinema.jsx";
 import CallOverlay from "./CallOverlay.jsx";
 import useChat from "./useChat.js";
 import useCall from "./useCall.js";
@@ -446,7 +448,11 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
   return (
     <div className="app">
-      <div className={"shell" + (view === "chat" ? " chat-mode" : "")}>
+      <div
+        className={
+          "shell" + (view === "chat" || view === "cinema" ? " chat-mode" : "")
+        }
+      >
         <nav className="rail">
           <div className="logo">S</div>
           <button
@@ -485,6 +491,14 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Gallery</span>
           </button>
           <button
+            className={"rail-btn" + (view === "cinema" ? " on" : "")}
+            onClick={() => setView("cinema")}
+            aria-label="Cinema"
+          >
+            <Film size={20} />
+            <span>Cinema</span>
+          </button>
+          <button
             className={"rail-btn" + (view === "chat" ? " on" : "")}
             onClick={() => {
               chat.closeChat();
@@ -518,7 +532,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </nav>
 
         <main className="main">
-          {view !== "chat" && (
+          {view !== "chat" && view !== "cinema" && (
             <header className="top">
               <div className="hello-row">
                 <Avatar
@@ -576,26 +590,29 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             </header>
           )}
 
-          {push.state === "off" && !pushHidden && view !== "chat" && (
-            <div className="push-banner">
-              <span>
-                Get notified about messages and calls, even when the app is
-                closed.
-              </span>
-              <button className="btn primary sm" onClick={push.enable}>
-                Turn on
-              </button>
-              <button
-                className="link"
-                onClick={() => {
-                  localStorage.setItem("push-banner-hidden", "1");
-                  setPushHidden(true);
-                }}
-              >
-                Not now
-              </button>
-            </div>
-          )}
+          {push.state === "off" &&
+            !pushHidden &&
+            view !== "chat" &&
+            view !== "cinema" && (
+              <div className="push-banner">
+                <span>
+                  Get notified about messages and calls, even when the app is
+                  closed.
+                </span>
+                <button className="btn primary sm" onClick={push.enable}>
+                  Turn on
+                </button>
+                <button
+                  className="link"
+                  onClick={() => {
+                    localStorage.setItem("push-banner-hidden", "1");
+                    setPushHidden(true);
+                  }}
+                >
+                  Not now
+                </button>
+              </div>
+            )}
 
           {view === "chat" ? (
             <Chat
@@ -608,6 +625,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               memberById={memberById}
               colorOf={colorOf}
             />
+          ) : view === "cinema" ? (
+            <Cinema space={space} userId={member.user_id} />
           ) : view === "today" ? (
             <Dashboard
               me={me}
@@ -907,15 +926,20 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </main>
       </div>
 
-      {view !== "gallery" && view !== "profile" && view !== "chat" && (
-        <button
-          className="fab"
-          onClick={() => openNew(view === "today" ? ymd(new Date()) : selected)}
-          aria-label="Add event"
-        >
-          <Plus size={26} />
-        </button>
-      )}
+      {view !== "gallery" &&
+        view !== "profile" &&
+        view !== "chat" &&
+        view !== "cinema" && (
+          <button
+            className="fab"
+            onClick={() =>
+              openNew(view === "today" ? ymd(new Date()) : selected)
+            }
+            aria-label="Add event"
+          >
+            <Plus size={26} />
+          </button>
+        )}
 
       <CallOverlay
         api={callApi}
