@@ -1,22 +1,8 @@
 export const PETS = [
-  { id: "cat", name: "Cat", image: "/pets/cat.jpg", motion: "/pets/motion/cat.webm", personality: "Curious little explorer", color: "#b78c66" },
-  { id: "dog", name: "Puppy", image: "/pets/dog.jpg", motion: "/pets/motion/dog.ogv", personality: "Loyal and always glad you’re home", color: "#c08a55" },
-  { id: "bunny", name: "Bunny", image: "/pets/bunny.jpg", motion: "/pets/motion/bunny.webm", personality: "Gentle and a little bouncy", color: "#89735f" },
-  { id: "fox", name: "Fox", image: "/pets/fox.jpg", personality: "Clever, playful, and quick", color: "#b56735" },
-  { id: "panda", name: "Red panda", image: "/pets/panda.jpg", personality: "A calm professional napper", color: "#aa6648" },
-  { id: "frog", name: "Frog", image: "/pets/frog.jpg", personality: "A curious visitor from the garden", color: "#72834b" },
-  { id: "capybara", name: "Capybara", image: "/pets/capybara.jpg", personality: "Unbothered by absolutely everything", color: "#9b7358" },
-  { id: "otter", name: "Otter", image: "/pets/otter.jpg", personality: "Social, silly, and loves a splash", color: "#80614e" },
-  { id: "dragon", name: "Bearded dragon", image: "/pets/dragon.jpg", personality: "A sun-loving little reptile", color: "#aa9068" },
-  { id: "penguin", name: "Penguin", image: "/pets/penguin.jpg", personality: "A devoted, curious companion", color: "#53677a" },
-  { id: "turtle", name: "Turtle", image: "/pets/turtle.jpg", personality: "Slow days, steady affection", color: "#67805b" },
-  { id: "hamster", name: "Hamster", image: "/pets/hamster.jpg", motion: "/pets/motion/hamster.webm", personality: "A tiny explorer with busy paws", color: "#b58a58" },
-  { id: "hedgehog", name: "Hedgehog", image: "/pets/hedgehog.jpg", personality: "Shy at first, then very curious", color: "#80684f" },
-  { id: "duckling", name: "Duckling", image: "/pets/duckling.jpg", personality: "Follows you everywhere", color: "#b89b52" },
-  { id: "unicorn", name: "Horse", image: "/pets/unicorn.jpg", personality: "Steady, gentle, and happiest outdoors", color: "#8c6649" },
-  { id: "koala", name: "Koala", image: "/pets/koala.jpg", personality: "A relaxed tree-climbing friend", color: "#85817c" },
-  { id: "raccoon", name: "Raccoon", image: "/pets/raccoon.jpg", personality: "A curious little night explorer", color: "#74716b" },
-  { id: "butterfly", name: "Butterfly", image: "/pets/butterfly.jpg", personality: "A bright visitor for the windowsill", color: "#8463a3" },
+  { id: "cat", name: "Cat", personality: "Curious, clever, and always ready for a chat", color: "#c99169" },
+  { id: "dog", name: "Dog", personality: "Loyal, playful, and happy you’re home", color: "#c88a50" },
+  { id: "hamster", name: "Hamster", personality: "A tiny soft friend with busy little paws", color: "#d2a66e" },
+  { id: "penguin", name: "Penguin", personality: "A gentle little waddler who loves company", color: "#556879" },
 ];
 
 export const PET_BY_ID = Object.fromEntries(PETS.map((pet) => [pet.id, pet]));
