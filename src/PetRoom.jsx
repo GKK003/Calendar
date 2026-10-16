@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import petImageCredits from "./petImageCredits.json";
+import petMotionCredits from "./petMotionCredits.json";
 import {
   CARE_ACTIONS, DAILY_CARE, DECOR, DECOR_BY_ID, DECOR_CATEGORIES,
   NEEDS, PETS, PET_BY_ID, ROOM_SLOTS, ROOM_THEMES, STARTER_ITEMS,
@@ -29,12 +30,16 @@ function Furniture({ item }) {
 }
 
 function PhotoCredits() {
+  const mediaCredits = [
+    ...petImageCredits.map((credit) => ({ ...credit, mediaType: "photo" })),
+    ...petMotionCredits.map((credit) => ({ ...credit, mediaType: "video" })),
+  ];
   return (
     <details className="pet-photo-credits">
-      <summary>Animal photo credits and licenses</summary>
-      <p>These locally stored animal photographs are from Wikimedia Commons. Each credit links to its file page and license.</p>
-      <ul>{petImageCredits.map((credit) => (
-        <li key={credit.id}><strong>{PET_BY_ID[credit.id]?.name || credit.id}</strong> — {credit.artist}. <a href={credit.source} target="_blank" rel="noreferrer">Source</a> · <a href={credit.licenseUrl} target="_blank" rel="noreferrer">{credit.license}</a></li>
+      <summary>Animal photo and video credits</summary>
+      <p>Animal photos and motion clips are stored with the site. Each credit links to its original file page and license.</p>
+      <ul>{mediaCredits.map((credit) => (
+        <li key={`${credit.id}-${credit.mediaType}`}><strong>{PET_BY_ID[credit.id]?.name || credit.id}</strong> {credit.mediaType}{credit.mediaType === "video" ? " (used unchanged)" : ""} — {credit.artist}. <a href={credit.source} target="_blank" rel="noreferrer">Source</a> · <a href={credit.licenseUrl} target="_blank" rel="noreferrer">{credit.license}</a></li>
       ))}</ul>
     </details>
   );
@@ -349,7 +354,7 @@ export default function PetRoom({ space, member, members = [] }) {
               if (!item || !position) return null;
               return <button key={slot} className={`pet-room-item pet-slot-${slot}`} style={position} onClick={() => placeItem(item)} title={`${item.name} · tap to put away`}><Furniture item={item} /><small>{item.name}</small></button>;
             })}
-            <div className="pet-room-pet" style={{ "--pet-color": pet.color }}><span className="pet-pet-shadow" /><span className="pet-avatar"><img src={pet.image} alt={`A photo of a ${pet.name.toLowerCase()}`} />{state.equipped && <i className={`pet-photo-accessory accessory-${DECOR_BY_ID[state.equipped]?.variant || "collar"}`} style={{ "--accessory-color": DECOR_BY_ID[state.equipped]?.color }} aria-label={DECOR_BY_ID[state.equipped]?.name} />}</span><strong>{state.pet.name}</strong><small>{needs.happiness >= 70 ? "feeling loved" : needs.happiness >= 40 ? "ready for a cuddle" : "missing you a little"}</small></div>
+            <div className="pet-room-pet" style={{ "--pet-color": pet.color }}><span className="pet-pet-shadow" /><span className={`pet-avatar${pet.motion ? " has-motion" : ""}`}>{pet.motion ? <video key={pet.motion} autoPlay={!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches} muted loop playsInline preload="auto" poster={pet.image} aria-label={`A moving video of a ${pet.name.toLowerCase()}`}><source src={pet.motion} type={pet.motion.endsWith(".ogv") ? "video/ogg" : "video/webm"} /></video> : <img src={pet.image} alt={`A photo of a ${pet.name.toLowerCase()}`} />}{state.equipped && <i className={`pet-photo-accessory accessory-${DECOR_BY_ID[state.equipped]?.variant || "collar"}`} style={{ "--accessory-color": DECOR_BY_ID[state.equipped]?.color }} aria-label={DECOR_BY_ID[state.equipped]?.name} />}</span><strong>{state.pet.name}</strong><small>{needs.happiness >= 70 ? "feeling loved" : needs.happiness >= 40 ? "ready for a cuddle" : "missing you a little"}</small></div>
             <span className="pet-room-sparkle pet-sparkle-one" /><span className="pet-room-sparkle pet-sparkle-two" /><span className="pet-room-floor-label">Shared pet room</span>
           </div>
           <div className="pet-room-tip"><Sparkles size={15} /> Tap any furniture to put it away. Visit your Collection to place it again.</div>

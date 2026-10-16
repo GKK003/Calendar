@@ -48,6 +48,8 @@
 .pet-pet-shadow{left:16%;right:16%;bottom:26px;height:10px;background:#302a222e;filter:blur(6px)}
 .pet-avatar{width:clamp(110px,15vw,156px);height:clamp(104px,13vw,138px);overflow:hidden;border:4px solid #f9f7f1;border-radius:14px;background:#d5d1c7;box-shadow:0 8px 18px #33261d32;animation:pet-photo-idle 5s ease-in-out infinite;transform-origin:center 85%}
 .pet-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;animation:pet-photo-breathe 5s ease-in-out infinite;will-change:transform}
+.pet-avatar video{display:block;width:100%;height:100%;object-fit:cover;object-position:center;background:#d5d1c7}
+.pet-avatar.has-motion{animation:none}
 .pet-avatar:has(img[src*="/pets/cat.jpg"]) img{object-position:center 42%}
 .pet-photo-accessory{position:absolute;left:23%;right:23%;bottom:12%;height:8px;border-bottom:4px solid var(--accessory-color,#89785f);border-radius:50%;filter:drop-shadow(0 1px 1px #0008)}
 @keyframes pet-photo-idle{0%,100%{transform:translateY(0) rotate(-.4deg)}50%{transform:translateY(-2px) rotate(.4deg)}}

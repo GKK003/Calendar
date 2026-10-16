@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cat",
+    "filename": "/pets/motion/cat.webm",
+    "title": "Cat making noises at the birds outside.webm",
+    "artist": "Ali T",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://commons.wikimedia.org/wiki/File:Cat_making_noises_at_the_birds_outside.webm"
+  },
+  {
+    "id": "dog",
+    "filename": "/pets/motion/dog.ogv",
+    "title": "Dog contrafeeloading.ogv",
+    "artist": "Jaydanp",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "source": "https://commons.wikimedia.org/wiki/File:Dog_contrafeeloading.ogv"
+  },
+  {
+    "id": "bunny",
+    "filename": "/pets/motion/bunny.webm",
+    "title": "Pet rabbit eating grass.webm",
+    "artist": "金色黎明",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "source": "https://commons.wikimedia.org/wiki/File:Pet_rabbit_eating_grass.webm"
+  },
+  {
+    "id": "hamster",
+    "filename": "/pets/motion/hamster.webm",
+    "title": "Hamster on a wheel.webm",
+    "artist": "Greg Heartsfield",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://commons.wikimedia.org/wiki/File:Hamster_on_a_wheel.webm"
+  }
+]
