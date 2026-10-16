@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, RotateCcw, Users, Gamepad2, Grid3X3, Keyboard } from "lucide-react";
+import { Check, RotateCcw, Users, Gamepad2, Grid3X3, Keyboard, History, Trophy } from "lucide-react";
 import { supabase } from "./supabase.js";
 import VALID_WORDS from "./word-list.json";
 import { usePath, navigate } from "./router.js";
@@ -17,8 +17,36 @@ const SOLUTION = [
   [8,5,9,7,6,1,4,2,3],[4,2,6,8,5,3,7,9,1],[7,1,3,9,2,4,8,5,6],
   [9,6,1,5,3,7,2,8,4],[2,8,7,4,1,9,6,3,5],[3,4,5,2,8,6,1,7,9]
 ];
-const wordState = () => ({ answer: WORDS[Math.floor(Math.random()*WORDS.length)], guesses: [], current: "", status: "playing", lastBy: null });
-const sudokuState = (difficulty = "normal") => { const { puzzle, solution } = generatePuzzle(difficulty); return { puzzle, solution, difficulty, values: puzzle.map(r=>r.slice()), selected: [0,0], status: "playing", lastBy: null }; };
+const wordState = (history = []) => ({ answer: WORDS[Math.floor(Math.random()*WORDS.length)], guesses: [], current: "", status: "playing", lastBy: null, startedAt: new Date().toISOString(), history });
+const sudokuState = (difficulty = "normal", history = []) => { const { puzzle, solution } = generatePuzzle(difficulty); return { puzzle, solution, difficulty, values: puzzle.map(r=>r.slice()), selected: [0,0], status: "playing", lastBy: null, startedAt: new Date().toISOString(), moves: 0, history }; };
+const makeHistoryRecord = (game, previous, completed, updatedBy, completedAt = new Date()) => {
+  const completedMs = completedAt.getTime();
+  const id = `${completedMs}-${Math.random().toString(36).slice(2, 8)}`;
+  if (game === "wordle") {
+    const guesses = Array.isArray(completed.guesses) ? completed.guesses : [];
+    return {
+      id, game_type: game, status: completed.status, completed_at: completedAt.toISOString(),
+      answer: completed.answer || previous.answer, guesses: guesses.length,
+      players: [...new Set(guesses.map(g => g.by).filter(Boolean))], updated_by: updatedBy || null,
+    };
+  }
+  const startedMs = Date.parse(previous.startedAt || completed.startedAt || "");
+  return {
+    id, game_type: game, status: completed.status, completed_at: completedAt.toISOString(),
+    difficulty: completed.difficulty || previous.difficulty || "normal",
+    duration_seconds: Number.isFinite(startedMs) ? Math.max(0, Math.round((completedMs - startedMs) / 1000)) : null,
+    moves: Number.isFinite(completed.moves) ? completed.moves : null, updated_by: updatedBy || null,
+  };
+};
+const formatDuration = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds < 0) return "Time untracked";
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+};
+const formatHistoryDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" });
+};
 
 export default function Games({ space, member, members }) {
   const path = usePath();
@@ -38,9 +66,21 @@ export default function Games({ space, member, members }) {
     if (error) setNotice("Games database isn't set up yet. Run supabase/games.sql in your Supabase SQL Editor.");
     else if (data) {
       const ok = game === "wordle" ? Array.isArray(data.state?.guesses) : Array.isArray(data.state?.values) && Array.isArray(data.state?.puzzle) && Array.isArray(data.state?.solution);
-      if (ok) setSession(data);
+      if (ok) {
+        const storedState = data.state;
+        let history = Array.isArray(storedState.history) ? storedState.history : [];
+        // Preserve the current result from older versions the first time history is opened.
+        if (!history.length && ["won", "lost"].includes(storedState.status)) {
+          history = [makeHistoryRecord(game, storedState, storedState, data.updated_by, new Date(data.updated_at || data.created_at || Date.now()))];
+        }
+        const normalized = { ...storedState, history };
+        if (!normalized.startedAt && normalized.status === "playing") normalized.startedAt = new Date().toISOString();
+        if (game === "sudoku" && !Number.isFinite(normalized.moves)) normalized.moves = 0;
+        setSession({ ...data, state: normalized });
+      }
       else {
-        const fresh = game === "wordle" ? wordState() : sudokuState();
+        const history = Array.isArray(data.state?.history) ? data.state.history : [];
+        const fresh = game === "wordle" ? wordState(history) : sudokuState("normal", history);
         await supabase.from("shared_games").update({state:fresh, updated_by:member.user_id, updated_at:new Date().toISOString()}).eq("id", data.id);
         setSession({ ...data, state: fresh });
       }
@@ -70,13 +110,19 @@ export default function Games({ space, member, members }) {
 
   const commit = (nextState) => {
     if (!session) return;
-    const optimistic = { ...session, state: nextState, updated_by: member.user_id, updated_at: new Date().toISOString() };
+    const previous = session.state || {};
+    let history = Array.isArray(previous.history) ? previous.history : [];
+    if (previous.status === "playing" && ["won", "lost"].includes(nextState.status)) {
+      history = [makeHistoryRecord(game, previous, nextState, member.user_id), ...history].slice(0, 100);
+    }
+    const savedState = { ...nextState, history };
+    const optimistic = { ...session, state: savedState, updated_by: member.user_id, updated_at: new Date().toISOString() };
     setSession(optimistic);
     setNotice("");
     const id = session.id;
     writeQueue.current = writeQueue.current.then(async () => {
       setSaving(true);
-      const { error } = await supabase.from("shared_games").update({state:nextState, updated_by:member.user_id, updated_at:new Date().toISOString()}).eq("id",id);
+      const { error } = await supabase.from("shared_games").update({state:savedState, updated_by:member.user_id, updated_at:new Date().toISOString()}).eq("id",id);
       if (error) setNotice("Move wasn't saved. Check your connection and try again.");
       setSaving(false);
     }).catch(() => {
@@ -84,12 +130,15 @@ export default function Games({ space, member, members }) {
       setSaving(false);
     });
   };
-  const reset = () => commit(game === "wordle" ? wordState() : sudokuState(state?.difficulty || "normal"));
+  const reset = () => {
+    const history = Array.isArray(state?.history) ? state.history : [];
+    commit(game === "wordle" ? wordState(history) : sudokuState(state?.difficulty || "normal", history));
+  };
   const startSudoku = (difficulty) => {
     if (!state) return;
     const progress = state.values.some((row,r)=>row.some((v,c)=>v!==state.puzzle[r][c]));
     if (state.status !== "won" && progress && !window.confirm("Start a new " + DIFFICULTIES[difficulty].label + " puzzle? Your current progress will be lost for both of you.")) return;
-    commit(sudokuState(difficulty));
+    commit(sudokuState(difficulty, Array.isArray(state.history) ? state.history : []));
   };
   const rawState = session && session.game_type === game ? session.state : null;
   const validState = rawState && (game === "wordle" ? Array.isArray(rawState.guesses) : Array.isArray(rawState.values) && Array.isArray(rawState.puzzle) && Array.isArray(rawState.solution));
@@ -113,7 +162,8 @@ export default function Games({ space, member, members }) {
     if (state.puzzle[r][c] !== 0) return;
     const values = state.values.map(row=>row.slice()); values[r][c] = n;
     const won = values.every((row,ri)=>row.every((v,ci)=>v === state.solution[ri][ci]));
-    commit({...state,values,status:won?"won":"playing",lastBy:member.user_id});
+    const moves = (state.moves || 0) + (state.values[r][c] !== n ? 1 : 0);
+    commit({...state,values,moves,status:won?"won":"playing",lastBy:member.user_id});
   };
   const selectCell = (r,c) => state && commit({...state,selected:[r,c],lastBy:member.user_id});
 
@@ -165,6 +215,13 @@ export default function Games({ space, member, members }) {
     return result;
   };
   const lastName = state?.lastBy ? nameById[state.lastBy] || "Someone" : "No moves yet";
+  const history = Array.isArray(state?.history) ? state.history : [];
+  const wins = history.filter(item => item.status === "won");
+  const bestWordle = wins.filter(item => Number.isFinite(item.guesses)).reduce((best, item) => Math.min(best, item.guesses), Infinity);
+  const bestSudoku = wins.filter(item => Number.isFinite(item.duration_seconds)).reduce((best, item) => !best || item.duration_seconds < best.duration_seconds ? item : best, null);
+  const historySummary = game === "wordle"
+    ? `${wins.length} solved · ${history.length} played${Number.isFinite(bestWordle) ? ` · best ${bestWordle}/6` : ""}`
+    : `${wins.length} puzzles solved${bestSudoku ? ` · best ${formatDuration(bestSudoku.duration_seconds)} (${DIFFICULTIES[bestSudoku.difficulty]?.label || "Normal"})` : ""}`;
 
   return <section className="games-page">
     <header className="games-heading"><div className="games-icon"><Gamepad2 size={25}/></div><div><p className="games-eyebrow">YOUR SHARED SPACE</p><h1>Play together</h1><p className="games-subtitle">One board, two players. Every move syncs to both screens.</p></div></header>
@@ -183,6 +240,25 @@ export default function Games({ space, member, members }) {
       <div className="sudoku-controls"><p className="sudoku-label">Selected cell</p><div className="number-pad">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} onClick={()=>sudokuSet(n)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>{n}</button>)}<button className="clear-number" onClick={()=>sudokuSet(0)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>Clear</button></div><p className="games-tip">Click a cell, then type 1–9 on your keyboard. Use Backspace or Delete to clear, and arrow keys to move between cells. Numbers sync instantly.</p></div></div>
       <div className="games-status">{state.status === "won" ? <><Check size={17}/> Puzzle completed together!</> : <>Last move: <strong>{lastName}</strong> · {DIFFICULTIES[state.difficulty||"normal"].label} puzzle</>}</div>
     </div>}
+    {state && !loading && <section className="game-history" aria-label="Game score history">
+      <div className="game-history-heading"><div className="game-history-icon"><History size={19}/></div><div><h2>Score history</h2><p>{history.length ? historySummary : "Completed games will show up here."}</p></div><span className="game-history-count">{history.length} {history.length === 1 ? "game" : "games"}</span></div>
+      {history.length > 0 && <div className="game-history-list">{history.slice(0, 20).map((item, index) => {
+        const won = item.status === "won";
+        const title = game === "wordle"
+          ? won ? `Solved in ${item.guesses} ${item.guesses === 1 ? "guess" : "guesses"}` : `Not solved · ${item.guesses || 0}/6 guesses`
+          : `Solved · ${DIFFICULTIES[item.difficulty]?.label || "Normal"}`;
+        const detail = game === "wordle"
+          ? `${formatHistoryDate(item.completed_at)} · Word: ${(item.answer || "").toUpperCase()}`
+          : `${formatHistoryDate(item.completed_at)} · ${item.moves ?? "—"} moves`;
+        const scoreText = game === "wordle" ? `${item.guesses || 0}/6` : formatDuration(item.duration_seconds);
+        return <div className="game-history-row" key={item.id || `${item.completed_at}-${index}`}>
+          <span className={`game-history-result${won ? " won" : " lost"}`}>{won ? <Trophy size={17}/> : <RotateCcw size={16}/>}</span>
+          <span className="game-history-copy"><strong>{title}</strong><small>{detail}</small></span>
+          <span className="game-history-score">{scoreText}</span>
+        </div>;
+      })}</div>}
+      {history.length > 20 && <p className="game-history-more">Showing the 20 most recent results.</p>}
+    </section>}
     <p className="games-footnote">Changes are saved to your shared calendar space, so you can switch devices and continue together.</p>
   </section>;
 }

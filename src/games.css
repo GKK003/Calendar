@@ -3,3 +3,20 @@
 .difficulty-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 16px}
 .difficulty-tabs button{padding:8px 16px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:transparent;font:inherit;font-weight:500;cursor:pointer;color:inherit}
 .difficulty-tabs button.active{background:linear-gradient(135deg,#f6a,#f88);color:#fff;border-color:transparent}
+.game-history{padding:18px;background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.game-history-heading{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.game-history-icon{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#f6a9c4,#d9c4ff);color:#542944;flex:none}
+.game-history-heading h2{font-size:17px;margin:0 0 3px}
+.game-history-heading p{font-size:12px;color:var(--muted);margin:0}
+.game-history-count{margin-left:auto;padding:5px 9px;border-radius:99px;background:#f8eef3;color:#79576a;font-size:11px;font-weight:700;white-space:nowrap}
+.game-history-list{display:grid;gap:8px}
+.game-history-row{display:flex;align-items:center;gap:11px;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.game-history-result{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:none}
+.game-history-result.won{background:#e6f5ec;color:#42966a}
+.game-history-result.lost{background:#f5edf0;color:#9e7385}
+.game-history-copy{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+.game-history-copy strong{font-size:13px;color:var(--text)}
+.game-history-copy small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.game-history-score{padding:6px 9px;border-radius:9px;background:#f8f0f4;color:#75546a;font-size:12px;font-weight:800;white-space:nowrap}
+.game-history-more{text-align:center;color:var(--muted);font-size:11px;margin:11px 0 0}
+@media(max-width:520px){.game-history{padding:14px;border-radius:16px}.game-history-heading{gap:9px}.game-history-icon{width:36px;height:36px;border-radius:11px}.game-history-row{gap:8px;padding:9px}.game-history-score{padding:5px 7px;font-size:11px}}
