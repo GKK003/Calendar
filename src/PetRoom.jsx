@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check, Heart, Home, Package, PawPrint, Pencil, ShoppingBag,
+  Check, Heart, Home, Mic, MicOff, Package, PawPrint, Pencil, ShoppingBag,
   Sparkles, Star, Store, Trophy,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
@@ -18,6 +18,22 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 const clamp = (value) => Math.max(0, Math.min(100, Math.round(value)));
 const ACTION_ICONS = { feed: Heart, play: Star, clean: Sparkles, cuddle: Heart, nap: Home };
 const NEED_ICONS = { fullness: Heart, happiness: Heart, energy: Star, cleanliness: Sparkles };
+const PET_COAT_SWATCHES = ["#c99169", "#e9c99f", "#b9b1a6", "#544d46", "#d99b9f", "#8298ba", "#d2ae58", "#78947b"];
+const TAP_REACTIONS = [
+  { action: "happy", line: "You found me! Yay!" },
+  { action: "curious", line: "What are you doing?" },
+  { action: "surprised", line: "Oh! That tickles!" },
+  { action: "shy", line: "Aww, you're sweet." },
+  { action: "love", line: "I love spending time with you!" },
+  { action: "silly", line: "Boop! Boop! Boop!" },
+];
+const CARE_LINES = {
+  feed: "Mmm, that was delicious!",
+  play: "Again! That was so much fun!",
+  clean: "All fresh and fluffy now!",
+  cuddle: "I love cuddles with you!",
+  nap: "Wake me when it's snack time!",
+};
 
 function Furniture({ item }) {
   return (
@@ -48,12 +64,12 @@ function normalizeState(value) {
   const raw = value && typeof value === "object" ? { ...value } : {};
   delete raw.coins;
   const legacyPetChoices = {
-    bunny: "hamster", fox: "dog", panda: "cat", frog: "hamster", capybara: "hamster",
-    otter: "cat", dragon: "cat", turtle: "penguin", hedgehog: "hamster", duckling: "penguin",
+    hamster: "cat", bunny: "cat", fox: "dog", panda: "cat", frog: "cat", capybara: "dog",
+    otter: "cat", dragon: "cat", turtle: "penguin", hedgehog: "cat", duckling: "penguin",
     unicorn: "dog", koala: "cat", raccoon: "cat", butterfly: "penguin",
   };
   const legacyPetNames = {
-    bunny: "Bunny", fox: "Fox", panda: "Panda", frog: "Frog", capybara: "Capybara", otter: "Otter",
+    hamster: "Hamster", bunny: "Bunny", fox: "Fox", panda: "Panda", frog: "Frog", capybara: "Capybara", otter: "Otter",
     dragon: "Baby dragon", turtle: "Turtle", hedgehog: "Hedgehog", duckling: "Duckling", unicorn: "Unicorn",
     koala: "Koala", raccoon: "Raccoon", butterfly: "Butterfly",
   };
@@ -62,6 +78,7 @@ function normalizeState(value) {
   const pet = petId ? {
     id: petId,
     name: legacyPetNames[raw.pet?.id] === petName ? PET_BY_ID[petId].name : (petName || PET_BY_ID[petId].name).slice(0, 18),
+    color: /^#[\da-f]{6}$/i.test(raw.pet?.color || "") ? raw.pet.color : PET_BY_ID[petId].color,
   } : null;
   const ownedItems = Array.isArray(raw.ownedItems)
     ? [...new Set(raw.ownedItems.filter((id) => DECOR_BY_ID[id]))]
@@ -137,13 +154,36 @@ export default function PetRoom({ space, member, members = [] }) {
   const [changePetOpen, setChangePetOpen] = useState(false);
   const [replacementPet, setReplacementPet] = useState("");
   const [petReaction, setPetReaction] = useState("idle");
+  const [petBubble, setPetBubble] = useState("");
+  const [petAnimationKey, setPetAnimationKey] = useState(0);
+  const [petColorDraft, setPetColorDraft] = useState(PETS[0].color);
+  const [talkText, setTalkText] = useState("");
+  const [listening, setListening] = useState(false);
   const [now, setNow] = useState(Date.now());
   const petReactionTimer = useRef(null);
+  const recognitionRef = useRef(null);
 
-  const animatePet = (reaction) => {
+  const speakPet = (text) => {
+    if (!text || !window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== "function") return false;
+    window.speechSynthesis.cancel();
+    const utterance = new window.SpeechSynthesisUtterance(text.slice(0, 180));
+    utterance.lang = navigator.language || "en-US";
+    utterance.pitch = 1.5;
+    utterance.rate = 1.08;
+    window.speechSynthesis.speak(utterance);
+    return true;
+  };
+
+  const animatePet = (reaction, bubble = "Hi!", speak = false) => {
     window.clearTimeout(petReactionTimer.current);
     setPetReaction(reaction);
-    petReactionTimer.current = window.setTimeout(() => setPetReaction("idle"), reaction === "talk" ? 2400 : 1500);
+    setPetBubble(bubble);
+    setPetAnimationKey((key) => key + 1);
+    if (speak) speakPet(bubble);
+    petReactionTimer.current = window.setTimeout(() => {
+      setPetReaction("idle");
+      setPetBubble("");
+    }, reaction === "talk" ? Math.max(2600, Math.min(7000, bubble.length * 55)) : 2600);
   };
 
   const load = useCallback(async (showLoading = true) => {
@@ -186,7 +226,11 @@ export default function PetRoom({ space, member, members = [] }) {
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => () => window.clearTimeout(petReactionTimer.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(petReactionTimer.current);
+    recognitionRef.current?.abort?.();
+    window.speechSynthesis?.cancel?.();
+  }, []);
   useEffect(() => {
     if (!changePetOpen) return undefined;
     const closeOnEscape = (event) => { if (event.key === "Escape") setChangePetOpen(false); };
@@ -199,6 +243,11 @@ export default function PetRoom({ space, member, members = [] }) {
   const level = state ? levelFor(state.xp) : { level: 1, progress: 0 };
   const pet = state?.pet ? PET_BY_ID[state.pet.id] : null;
   const theme = ROOM_THEMES.find((item) => item.id === state?.theme) || ROOM_THEMES[0];
+  const canRecognizeSpeech = typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const canSpeakPet = typeof window !== "undefined" && Boolean(window.speechSynthesis) && typeof window.SpeechSynthesisUtterance === "function";
+  useEffect(() => {
+    if (state?.pet?.color) setPetColorDraft(state.pet.color);
+  }, [state?.pet?.id, state?.pet?.color]);
   const visibleDecor = category === "All" ? DECOR : DECOR.filter((item) => item.category === category);
   const sortedDecor = [...visibleDecor].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -225,8 +274,67 @@ export default function PetRoom({ space, member, members = [] }) {
   const adopt = async () => {
     if (!state || state.pet) return;
     const name = petName.trim().slice(0, 18) || PET_BY_ID[selectedPet].name;
-    const adopted = await commit({ ...state, pet: { id: selectedPet, name }, adoptedAt: new Date().toISOString() }, `${name} has joined your home!`);
+    const adopted = await commit({ ...state, pet: { id: selectedPet, name, color: PET_BY_ID[selectedPet].color }, adoptedAt: new Date().toISOString() }, `${name} has joined your home!`);
     if (adopted) animatePet("happy");
+  };
+
+  const reactToTouch = () => {
+    const options = TAP_REACTIONS.filter((reaction) => reaction.action !== petReaction);
+    const reaction = options[Math.floor(Math.random() * options.length)] || TAP_REACTIONS[0];
+    animatePet(reaction.action, reaction.line, true);
+  };
+
+  const savePetColor = async () => {
+    if (!state?.pet || !/^#[\da-f]{6}$/i.test(petColorDraft)) return;
+    const saved = await commit({ ...state, pet: { ...state.pet, color: petColorDraft } }, "Your pet has a fresh new coat color!");
+    if (saved) animatePet("happy", "I love my new look!", true);
+  };
+
+  const talkToPet = (event) => {
+    event.preventDefault();
+    const message = talkText.trim().slice(0, 180);
+    if (!message) return;
+    setTalkText("");
+    animatePet("talk", message, true);
+  };
+
+  const listenAndRepeat = () => {
+    if (listening) {
+      recognitionRef.current?.stop?.();
+      return;
+    }
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      setNotice("Voice input isn't available in this browser. Type a message and your pet will say it aloud.");
+      return;
+    }
+    setNotice("");
+    try {
+      window.speechSynthesis?.cancel?.();
+      const recognition = new Recognition();
+      recognition.lang = navigator.language || "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = () => setListening(true);
+      recognition.onresult = (event) => {
+        const transcript = String(event.results?.[0]?.[0]?.transcript || "").trim().slice(0, 180);
+        if (!transcript) return setNotice("I didn't catch that. Try again or type a message.");
+        setTalkText(transcript);
+        animatePet("talk", transcript, true);
+      };
+      recognition.onerror = (event) => {
+        setNotice(event.error === "not-allowed" ? "Allow microphone access to use voice input, or type a message instead." : "I couldn't hear that clearly. Try again or type a message.");
+      };
+      recognition.onend = () => {
+        setListening(false);
+        recognitionRef.current = null;
+      };
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setListening(false);
+      setNotice("Voice input couldn't start. Type a message and your pet will say it aloud.");
+    }
   };
 
   const care = async (actionId) => {
@@ -261,7 +369,7 @@ export default function PetRoom({ space, member, members = [] }) {
     const message = didFinish ? `${action.message} Daily care complete! +20 bonus XP.`
       : !wasComplete && DAILY_CARE.some((task) => task.id === actionId) ? `${action.message} +10 XP for today's care.` : action.message;
     const saved = await commit(next, message);
-    if (saved) animatePet(actionId);
+    if (saved) animatePet(actionId, CARE_LINES[actionId] || "That was nice!");
   };
 
   const addItem = async (item) => {
@@ -301,7 +409,7 @@ export default function PetRoom({ space, member, members = [] }) {
     if (!choice || choice.id === state.pet.id) return;
     const previousDefaultName = PET_BY_ID[state.pet.id].name;
     const name = state.pet.name === previousDefaultName ? choice.name : state.pet.name;
-    const changed = await commit({ ...state, pet: { id: choice.id, name } }, `${name} is now your ${choice.name.toLowerCase()}! Your room and progress are safe.`);
+    const changed = await commit({ ...state, pet: { id: choice.id, name, color: choice.color } }, `${name} is now your ${choice.name.toLowerCase()}! Your room and progress are safe.`);
     if (changed) {
       setChangePetOpen(false);
       animatePet("happy");
@@ -357,15 +465,17 @@ export default function PetRoom({ space, member, members = [] }) {
               if (!item || !position) return null;
               return <button key={slot} className={`pet-room-item pet-slot-${slot}`} style={position} onClick={() => placeItem(item)} title={`${item.name} · tap to put away`}><Furniture item={item} /><small>{item.name}</small></button>;
             })}
-            <div className="pet-room-pet" style={{ "--pet-color": pet.color }}><button className={`pet-character-button pet-action-${petReaction}`} type="button" onClick={() => animatePet("talk")} aria-label={`Tap ${state.pet.name} to say hello`}><AnimatedPet species={pet.id} action={petReaction} accessoryColor={state.equipped ? DECOR_BY_ID[state.equipped]?.color : undefined} /><span className={`pet-speech-bubble ${petReaction === "talk" ? "visible" : ""}`} aria-live="polite">Hi!</span></button><strong>{state.pet.name}</strong><small>{needs.happiness >= 70 ? "feeling loved" : needs.happiness >= 40 ? "ready for a cuddle" : "missing you a little"} · tap to say hi</small></div>
+            <div className="pet-room-pet" style={{ "--pet-color": state.pet.color || pet.color }}><button key={petAnimationKey} className={`pet-character-button pet-action-${petReaction}`} type="button" onClick={reactToTouch} aria-label={`Touch ${state.pet.name} for a reaction`}><AnimatedPet species={pet.id} color={state.pet.color} action={petReaction} accessoryColor={state.equipped ? DECOR_BY_ID[state.equipped]?.color : undefined} /><span className={`pet-speech-bubble ${petBubble ? "visible" : ""}`} aria-live="polite">{petBubble}</span></button><strong>{state.pet.name}</strong><small>{needs.happiness >= 70 ? "feeling loved" : needs.happiness >= 40 ? "ready for a cuddle" : "missing you a little"} · touch for a reaction</small></div>
             <span className="pet-room-sparkle pet-sparkle-one" /><span className="pet-room-sparkle pet-sparkle-two" /><span className="pet-room-floor-label">Shared pet room</span>
           </div>
-          <div className="pet-room-tip"><Sparkles size={15} /> Tap your pet to say hi. Care actions make them react; tap furniture to put it away.</div>
+          <div className="pet-room-tip"><Sparkles size={15} /> Touch your pet for a different mood and spoken response. Care actions make them react; tap furniture to put it away.</div>
           <div className="pet-placed-chips">{Object.values(state.placed).length} items on display <span>·</span> {state.ownedItems.length} collected <span>·</span> {state.ownedThemes.length} room styles</div>
         </section>
         <aside className="pet-side-column">
           <section className="pet-panel pet-level-panel"><div className="pet-level-top"><div className="pet-level-badge"><Star size={18} fill="currentColor" /></div><div><strong>Level {level.level}</strong><small>{state.xp} total XP</small></div><span className="pet-level-next">{level.level >= 50 ? "MAX" : `${level.progress}/100 XP`}</span></div><div className="pet-xp-track"><span style={{ width: `${level.progress}%` }} /></div><p>Care together to earn XP and help {state.pet.name} grow.</p></section>
           <section className="pet-panel"><div className="pet-panel-heading"><div><span className="pet-eyebrow">LITTLE CHECK-IN</span><h3>How are they feeling?</h3></div><span className="pet-mood-status">{Math.min(...NEEDS.map((need) => needs[need.id])) >= 75 ? "Content" : Math.min(...NEEDS.map((need) => needs[need.id])) >= 40 ? "Doing okay" : "Needs care"}</span></div><div className="pet-needs-list">{NEEDS.map((need) => { const Icon = NEED_ICONS[need.id]; return <div className="pet-need" key={need.id}><div className="pet-need-label"><span className="pet-need-name"><Icon size={13} /> {need.label}</span><strong>{needs[need.id]}%</strong></div><div className="pet-need-track"><span style={{ width: `${needs[need.id]}%`, background: need.color }} /></div></div>; })}</div></section>
+          <section className="pet-panel pet-color-panel"><div className="pet-panel-heading"><div><span className="pet-eyebrow">MAKE THEM YOURS</span><h3>Coat color</h3></div><span className="pet-color-preview" style={{ background: petColorDraft }} /></div><div className="pet-color-controls"><label className="pet-color-input-label"><span>Choose any color</span><input type="color" value={petColorDraft} onChange={(event) => setPetColorDraft(event.target.value)} aria-label="Choose your pet’s coat color" /></label><div className="pet-color-swatches" aria-label="Quick coat colors">{PET_COAT_SWATCHES.map((color) => <button key={color} type="button" className={petColorDraft.toLowerCase() === color ? "selected" : ""} onClick={() => setPetColorDraft(color)} aria-label={`Choose ${color} coat color`} aria-pressed={petColorDraft.toLowerCase() === color} style={{ "--swatch": color }} />)}</div></div><button className="pet-color-save" type="button" onClick={savePetColor} disabled={saving || petColorDraft.toLowerCase() === state.pet.color?.toLowerCase()}>{saving ? "Saving…" : "Save coat color"}</button></section>
+          <section className="pet-panel pet-talk-panel"><div className="pet-panel-heading"><div><span className="pet-eyebrow">SAY SOMETHING</span><h3>Talk together</h3></div><Mic size={17} /></div><p className="pet-talk-intro">{canSpeakPet ? "Your pet repeats what it hears in a playful voice." : "Send a message and your pet will answer in a speech bubble."}</p><form className="pet-talk-form" onSubmit={talkToPet}><label className="sr-only" htmlFor="pet-talk-message">Message for {state.pet.name}</label><input id="pet-talk-message" value={talkText} onChange={(event) => setTalkText(event.target.value.slice(0, 180))} placeholder={`Say something to ${state.pet.name}…`} maxLength={180} /><button type="submit" disabled={!talkText.trim()} aria-label="Have your pet repeat this message"><Volume2 size={17} /></button></form><button className={`pet-mic-button ${listening ? "listening" : ""}`} type="button" onClick={listenAndRepeat} disabled={!canRecognizeSpeech && !listening}>{listening ? <MicOff size={16} /> : <Mic size={16} />}{listening ? "Stop listening" : "Speak to your pet"}</button><small className="pet-talk-hint">{canRecognizeSpeech ? "Your browser handles voice input after you tap." : "Voice input isn't supported here; type a message instead."}</small></section>
           <section className="pet-panel pet-care-panel"><div className="pet-panel-heading"><div><span className="pet-eyebrow">TODAY · UP TO 60 XP</span><h3>Care together</h3></div><span className="pet-streak"><Sparkles size={14} /> {state.daily.streak} day streak</span></div><p className="pet-care-intro">Complete each daily task for 10 XP, and finish all four for a 20 XP bonus.</p><div className="pet-care-actions">{[
             ["feed", "Feed"], ["play", "Play"], ["clean", "Freshen up"], ["cuddle", "Cuddle"], ["nap", "Nap"],
           ].map(([id, label]) => { const Icon = ACTION_ICONS[id]; return <button key={id} onClick={() => care(id)} disabled={saving} className={`pet-care-action ${state.daily.completed.includes(id) ? "done" : ""}`}><span><Icon size={17} /></span><strong>{label}</strong>{state.daily.completed.includes(id) && <Check size={13} />}</button>; })}</div><div className="pet-task-list">{DAILY_CARE.map((task) => { const Icon = ACTION_ICONS[task.id]; const done = state.daily.completed.includes(task.id); return <div className={done ? "done" : ""} key={task.id}><span className="pet-task-check">{done ? <Check size={13} /> : <Icon size={12} />}</span><span>{task.name}</span><strong>{done ? "Earned" : `+${task.xp} XP`}</strong></div>; })}</div>{allDailyDone && <div className="pet-daily-complete"><Check size={14} /> Today’s care is complete. Your pet feels so loved!</div>}</section>

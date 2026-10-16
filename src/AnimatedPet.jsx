@@ -3,9 +3,16 @@ import { useId } from "react";
 const PET_COLORS = {
   cat: { coat: "#c99169", shade: "#986849", belly: "#f6e4cf", inner: "#d98786", eye: "#668d78", muzzle: "#f4dfd1", nose: "#9d655f" },
   dog: { coat: "#c88a50", shade: "#98643e", belly: "#f5dfbd", inner: "#9a5d43", eye: "#604735", muzzle: "#f4e8d6", nose: "#4f4039" },
-  hamster: { coat: "#d2a66e", shade: "#a87b4d", belly: "#fff0d6", inner: "#d98982", eye: "#43372e", muzzle: "#fff0da", nose: "#996454" },
   penguin: { coat: "#556879", shade: "#344652", belly: "#f6f3e8", inner: "#d8974a", eye: "#283139", muzzle: "#f2c464", nose: "#d98d35" },
 };
+
+function darken(hex, amount = 0.25) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  if (!/^#[\da-f]{6}$/i.test(hex) || !Number.isFinite(value)) return hex;
+  const channels = [(value >> 16) & 255, (value >> 8) & 255, value & 255]
+    .map((channel) => Math.round(channel * (1 - amount)));
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
 
 function Cat({ colors, coat }) {
   return <>
@@ -58,29 +65,6 @@ function Dog({ colors, coat }) {
   </>;
 }
 
-function Hamster({ colors, coat }) {
-  return <>
-    <ellipse cx="101" cy="157" rx="57" ry="61" fill={coat} />
-    <ellipse cx="101" cy="166" rx="37" ry="45" fill={colors.belly} />
-    <path d="M64 190 Q57 207 48 209 Q43 215 56 216 L79 207 M137 190 Q144 207 153 209 Q158 215 145 216 L122 207" fill={coat} />
-    <ellipse cx="67" cy="212" rx="17" ry="8" fill={colors.shade} /><ellipse cx="135" cy="212" rx="17" ry="8" fill={colors.shade} />
-    <path d="M66 133 Q54 143 59 161 L77 171 L84 153 M136 133 Q148 143 143 161 L125 171 L118 153" fill="none" stroke={colors.shade} strokeWidth="12" strokeLinecap="round" />
-    <circle cx="69" cy="42" r="19" fill={coat} /><circle cx="133" cy="42" r="19" fill={coat} />
-    <circle cx="69" cy="43" r="10" fill={colors.inner} /><circle cx="133" cy="43" r="10" fill={colors.inner} />
-    <ellipse cx="101" cy="74" rx="53" ry="45" fill={coat} />
-    <ellipse cx="80" cy="79" rx="12" ry="14" fill="#fffdf5" /><ellipse cx="122" cy="79" rx="12" ry="14" fill="#fffdf5" />
-    <ellipse cx="82" cy="81" rx="5.5" ry="8" fill={colors.eye} /><ellipse cx="120" cy="81" rx="5.5" ry="8" fill={colors.eye} />
-    <circle cx="83" cy="78" r="2.2" fill="white" /><circle cx="121" cy="78" r="2.2" fill="white" />
-    <ellipse className="pet-blink" cx="80" cy="79" rx="12" ry="14" fill={coat} /><ellipse className="pet-blink" cx="122" cy="79" rx="12" ry="14" fill={coat} />
-    <ellipse cx="73" cy="99" rx="17" ry="12" fill="#e8a3a0" opacity=".78" /><ellipse cx="129" cy="99" rx="17" ry="12" fill="#e8a3a0" opacity=".78" />
-    <ellipse cx="101" cy="97" rx="24" ry="17" fill={colors.muzzle} />
-    <ellipse cx="101" cy="91" rx="5" ry="4" fill={colors.nose} />
-    <path className="pet-smile" d="M101 95 Q96 105 91 101 M101 95 Q106 105 111 101" fill="none" stroke="#77544a" strokeWidth="2" strokeLinecap="round" />
-    <ellipse className="pet-open-mouth" cx="101" cy="101" rx="6" ry="7" fill="#743e45" />
-    <path d="M75 151 Q101 160 127 151" fill="none" stroke="#ead6b8" strokeWidth="4" strokeLinecap="round" />
-  </>;
-}
-
 function Penguin({ colors, coat }) {
   return <>
     <ellipse cx="101" cy="151" rx="52" ry="66" fill={coat} />
@@ -101,10 +85,12 @@ function Penguin({ colors, coat }) {
   </>;
 }
 
-export default function AnimatedPet({ species, action = "idle", accessoryColor }) {
+export default function AnimatedPet({ species, action = "idle", accessoryColor, color }) {
   const instanceId = useId().replaceAll(":", "");
-  const colors = PET_COLORS[species] || PET_COLORS.cat;
-  const drawPet = { cat: Cat, dog: Dog, hamster: Hamster, penguin: Penguin }[species] || Cat;
+  const baseColors = PET_COLORS[species] || PET_COLORS.cat;
+  const coatColor = /^#[\da-f]{6}$/i.test(color || "") ? color : baseColors.coat;
+  const colors = { ...baseColors, coat: coatColor, shade: darken(coatColor) };
+  const drawPet = { cat: Cat, dog: Dog, penguin: Penguin }[species] || Cat;
   const PetShape = drawPet;
   const gradientId = `pet-coat-${species}-${instanceId}`;
   const coat = `url(#${gradientId})`;
@@ -112,7 +98,7 @@ export default function AnimatedPet({ species, action = "idle", accessoryColor }
   return (
     <svg className={`animated-pet pet-species-${species} pet-action-${action}`} viewBox="0 0 200 232" aria-hidden="true" focusable="false">
       <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2=".9" y2="1"><stop stopColor={colors.coat} /><stop offset="1" stopColor={colors.shade} /></linearGradient>
+      <linearGradient id={gradientId} x1="0" y1="0" x2=".9" y2="1"><stop stopColor={colors.coat} /><stop offset="1" stopColor={colors.shade} /></linearGradient>
       </defs>
       <ellipse className="pet-ground-shadow" cx="101" cy="218" rx="48" ry="8" />
       <g className="pet-character-body">

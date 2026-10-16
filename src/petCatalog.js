@@ -1,7 +1,6 @@
 export const PETS = [
   { id: "cat", name: "Cat", personality: "Curious, clever, and always ready for a chat", color: "#c99169" },
   { id: "dog", name: "Dog", personality: "Loyal, playful, and happy you’re home", color: "#c88a50" },
-  { id: "hamster", name: "Hamster", personality: "A tiny soft friend with busy little paws", color: "#d2a66e" },
   { id: "penguin", name: "Penguin", personality: "A gentle little waddler who loves company", color: "#556879" },
 ];
 
