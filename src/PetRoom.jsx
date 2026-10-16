@@ -109,6 +109,8 @@ export default function PetRoom({ space, member, members = [] }) {
   const [category, setCategory] = useState("All");
   const [petName, setPetName] = useState("");
   const [selectedPet, setSelectedPet] = useState(PETS[0].id);
+  const [changePetOpen, setChangePetOpen] = useState(false);
+  const [replacementPet, setReplacementPet] = useState("");
   const [now, setNow] = useState(Date.now());
 
   const load = useCallback(async (showLoading = true) => {
@@ -151,6 +153,12 @@ export default function PetRoom({ space, member, members = [] }) {
     const timer = window.setInterval(() => setNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    if (!changePetOpen) return undefined;
+    const closeOnEscape = (event) => { if (event.key === "Escape") setChangePetOpen(false); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [changePetOpen]);
 
   const state = record?.state ? normalizeState(record.state) : null;
   const needs = useMemo(() => state ? currentNeeds(state.needs, now) : null, [state, now]);
@@ -257,6 +265,15 @@ export default function PetRoom({ space, member, members = [] }) {
     await commit({ ...state, pet: { ...state.pet, name } }, `${name} has a new name!`);
   };
 
+  const changePet = async () => {
+    const choice = PET_BY_ID[replacementPet];
+    if (!choice || choice.id === state.pet.id) return;
+    const previousDefaultName = PET_BY_ID[state.pet.id].name;
+    const name = state.pet.name === previousDefaultName ? choice.name : state.pet.name;
+    const changed = await commit({ ...state, pet: { id: choice.id, name } }, `${name} is now your ${choice.name.toLowerCase()}! Your room and progress are safe.`);
+    if (changed) setChangePetOpen(false);
+  };
+
   if (loading) return <section className="pet-page" aria-label="Pet Room"><div className="pet-loading"><span>🐾</span><p>Warming up the pet room…</p></div></section>;
 
   if (!state?.pet) return (
@@ -297,7 +314,7 @@ export default function PetRoom({ space, member, members = [] }) {
 
       {tab === "room" && <div className="pet-layout">
         <section className="pet-room-card">
-          <div className="pet-room-top"><div><span className="pet-eyebrow">HOME SWEET HOME</span><h2>{theme.emoji} {theme.name}</h2></div><div className="pet-room-tools"><button className="pet-small-button" onClick={renamePet} disabled={saving}><Pencil size={14} /> Rename pet</button><button className="pet-small-button" onClick={() => setTab("shop")}><Sparkles size={15} /> Change style</button></div></div>
+          <div className="pet-room-top"><div><span className="pet-eyebrow">HOME SWEET HOME</span><h2>{theme.emoji} {theme.name}</h2></div><div className="pet-room-tools"><button className="pet-small-button" onClick={() => { setReplacementPet(state.pet.id); setChangePetOpen(true); }} disabled={saving}><PawPrint size={14} /> Change pet</button><button className="pet-small-button" onClick={renamePet} disabled={saving}><Pencil size={14} /> Rename</button><button className="pet-small-button" onClick={() => setTab("shop")}><Sparkles size={15} /> Change style</button></div></div>
           <div className="pet-scene" style={{ "--room-wall": theme.wall, "--room-floor": theme.floor, "--room-accent": theme.accent }}>
             <div className="pet-room-window"><span>☀️</span><i /><i /></div><div className="pet-room-wall-line" />
             {Object.entries(state.placed).map(([slot, itemId]) => {
@@ -333,6 +350,7 @@ export default function PetRoom({ space, member, members = [] }) {
       {tab === "trophies" && <section className="pet-achievements-page"><div className="pet-shop-header"><div><span className="pet-eyebrow">LITTLE THINGS ADD UP</span><h2>Your shared milestones</h2><p>Small routines, happy memories, and a home you built together.</p></div><div className="pet-achievement-count"><Trophy size={17} /> {achievements.filter((item) => item.done).length} / {achievements.length} earned</div></div><div className="pet-achievement-grid">{achievements.map((achievement) => <article className={`pet-achievement ${achievement.done ? "unlocked" : ""}`} key={achievement.id}><span>{achievement.emoji}</span><div><strong>{achievement.title}</strong><p>{achievement.text}</p></div><span className="pet-achievement-state">{achievement.done ? <Check size={16} /> : "🔒"}</span></article>)}</div><div className="pet-care-history"><div className="pet-care-history-icon"><Heart size={18} /></div><div><strong>{state.daily.streak} day{state.daily.streak === 1 ? "" : "s"} of showing up</strong><p>{state.daily.completedDay === todayKey() ? "All four care tasks are complete today. See you tomorrow for the next little ritual." : `${state.daily.completed.length} of 4 care tasks done today. A small check-in goes a long way.`}</p></div></div></section>}
 
       <footer className="pet-footnote">Your shared pet’s needs change gently over time, and never reach zero permanently. Your home and progress are saved together in your shared space.</footer>
+      {changePetOpen && <div className="pet-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setChangePetOpen(false); }}><section className="pet-change-dialog" role="dialog" aria-modal="true" aria-labelledby="pet-change-title"><button className="pet-modal-close" onClick={() => setChangePetOpen(false)} aria-label="Close pet selector">×</button><span className="pet-eyebrow">A NEW LITTLE LOOK</span><h2 id="pet-change-title">Choose a different pet</h2><p>Your room, coins, care progress, and collection will stay just as they are.</p><div className="pet-change-grid">{PETS.map((choice) => <button key={choice.id} className={`pet-change-choice ${replacementPet === choice.id ? "selected" : ""}`} onClick={() => setReplacementPet(choice.id)} style={{ "--pet-color": choice.color }}><span>{choice.emoji}</span><strong>{choice.name}</strong></button>)}</div><div className="pet-change-actions"><button className="pet-cancel-button" onClick={() => setChangePetOpen(false)}>Keep current pet</button><button className="pet-primary" onClick={changePet} disabled={saving || replacementPet === state.pet.id}>{saving ? "Changing pet…" : "Change pet"}</button></div></section></div>}
     </section>
   );
 }
