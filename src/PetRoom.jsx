@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Check, Coins, Heart, Home, Package, PawPrint, Pencil, ShoppingBag,
+  Check, Heart, Home, Package, PawPrint, Pencil, ShoppingBag,
   Sparkles, Star, Store, Trophy,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
@@ -18,7 +18,6 @@ const clamp = (value) => Math.max(0, Math.min(100, Math.round(value)));
 function freshState() {
   return {
     pet: null,
-    coins: 250,
     xp: 0,
     ownedItems: [...STARTER_ITEMS],
     placed: { ...STARTER_PLACED },
@@ -33,7 +32,8 @@ function freshState() {
 
 function normalizeState(value) {
   const base = freshState();
-  const raw = value && typeof value === "object" ? value : {};
+  const raw = value && typeof value === "object" ? { ...value } : {};
+  delete raw.coins;
   const pet = raw.pet && PET_BY_ID[raw.pet.id]
     ? { id: raw.pet.id, name: String(raw.pet.name || PET_BY_ID[raw.pet.id].name).slice(0, 18) }
     : null;
@@ -52,7 +52,6 @@ function normalizeState(value) {
     ...base,
     ...raw,
     pet,
-    coins: Number.isFinite(raw.coins) ? Math.max(0, Math.floor(raw.coins)) : base.coins,
     xp: Number.isFinite(raw.xp) ? Math.max(0, Math.floor(raw.xp)) : 0,
     ownedItems,
     placed,
@@ -166,7 +165,7 @@ export default function PetRoom({ space, member, members = [] }) {
   const pet = state?.pet ? PET_BY_ID[state.pet.id] : null;
   const theme = ROOM_THEMES.find((item) => item.id === state?.theme) || ROOM_THEMES[0];
   const visibleDecor = category === "All" ? DECOR : DECOR.filter((item) => item.category === category);
-  const sortedDecor = [...visibleDecor].sort((a, b) => a.price - b.price || a.name.localeCompare(b.name));
+  const sortedDecor = [...visibleDecor].sort((a, b) => a.name.localeCompare(b.name));
 
   const commit = async (nextState, successMessage = "") => {
     if (!record || saving) return false;
@@ -206,7 +205,6 @@ export default function PetRoom({ space, member, members = [] }) {
       ? [...daily.completed, actionId]
       : daily.completed;
     const didFinish = completed.length === DAILY_CARE.length && daily.completed.length < DAILY_CARE.length;
-    let coins = state.coins + (!wasComplete && DAILY_CARE.some((task) => task.id === actionId) ? 10 : 0);
     let xp = state.xp + (!wasComplete && DAILY_CARE.some((task) => task.id === actionId) ? 10 : 0);
     let streak = daily.streak || 0;
     let lastCompleteDay = daily.lastCompleteDay || null;
@@ -216,25 +214,22 @@ export default function PetRoom({ space, member, members = [] }) {
       const yesterdayKey = yesterday.toISOString().slice(0, 10);
       streak = lastCompleteDay === yesterdayKey ? streak + 1 : lastCompleteDay === date ? streak : 1;
       lastCompleteDay = date;
-      coins += 30;
       xp += 20;
     }
     const next = {
       ...state,
-      coins,
       xp,
       needs: { ...updatedNeeds, updatedAt: new Date().toISOString() },
       daily: { ...daily, completed, streak, lastCompleteDay, completedDay: didFinish ? date : daily.completedDay },
     };
-    const message = didFinish ? `${action.message} Daily care complete! +30 bonus coins and +20 XP.`
-      : !wasComplete && DAILY_CARE.some((task) => task.id === actionId) ? `${action.message} +10 coins and +10 XP for today's care.` : action.message;
+    const message = didFinish ? `${action.message} Daily care complete! +20 bonus XP.`
+      : !wasComplete && DAILY_CARE.some((task) => task.id === actionId) ? `${action.message} +10 XP for today's care.` : action.message;
     await commit(next, message);
   };
 
-  const buyItem = async (item) => {
+  const addItem = async (item) => {
     if (!state || state.ownedItems.includes(item.id)) return;
-    if (state.coins < item.price) return setNotice(`You need ${item.price - state.coins} more coins for ${item.name}.`);
-    await commit({ ...state, coins: state.coins - item.price, ownedItems: [...state.ownedItems, item.id] }, `${item.name} added to your collection.`);
+    await commit({ ...state, ownedItems: [...state.ownedItems, item.id] }, `${item.name} added to your collection.`);
   };
 
   const placeItem = async (item) => {
@@ -252,8 +247,7 @@ export default function PetRoom({ space, member, members = [] }) {
   const setTheme = async (nextTheme) => {
     if (!state) return;
     const isOwned = state.ownedThemes.includes(nextTheme.id);
-    if (!isOwned && state.coins < nextTheme.price) return setNotice(`You need ${nextTheme.price - state.coins} more coins for this room style.`);
-    await commit({ ...state, theme: nextTheme.id, coins: isOwned ? state.coins : state.coins - nextTheme.price, ownedThemes: isOwned ? state.ownedThemes : [...state.ownedThemes, nextTheme.id] }, `${nextTheme.name} is now your room style.`);
+    await commit({ ...state, theme: nextTheme.id, ownedThemes: isOwned ? state.ownedThemes : [...state.ownedThemes, nextTheme.id] }, `${nextTheme.name} is now your room style.`);
   };
 
   const renamePet = async () => {
@@ -281,11 +275,11 @@ export default function PetRoom({ space, member, members = [] }) {
       <header className="pet-heading"><div className="pet-heading-icon"><PawPrint size={26} /></div><div><div className="pet-eyebrow">A LITTLE HOME, TOGETHER</div><h1>Pet Room</h1><p>Choose a companion for your shared space. You’ll both care for them and make their room yours.</p></div></header>
       {notice && <div className="pet-notice">{notice}</div>}
       <section className="pet-adopt-card">
-        <div className="pet-section-heading"><div><span className="pet-eyebrow">MEET YOUR NEW ROOMMATE</span><h2>Who’s coming home?</h2><p>Every companion has their own little personality.</p></div><span className="pet-starter-coins"><Coins size={17} /> 250 starter coins</span></div>
+        <div className="pet-section-heading"><div><span className="pet-eyebrow">MEET YOUR NEW ROOMMATE</span><h2>Who’s coming home?</h2><p>Every companion has their own little personality.</p></div><span className="pet-free-note">All pets, styles, and decor are free</span></div>
         <div className="pet-choice-grid">{PETS.map((choice) => <button className={`pet-choice ${selectedPet === choice.id ? "selected" : ""}`} key={choice.id} onClick={() => setSelectedPet(choice.id)} style={{ "--pet-color": choice.color }}><span className="pet-choice-emoji">{choice.emoji}</span><strong>{choice.name}</strong><small>{choice.personality}</small>{selectedPet === choice.id && <span className="pet-choice-check"><Check size={14} /></span>}</button>)}</div>
         <div className="pet-adopt-footer"><label className="pet-name-label">Give them a name<input value={petName} onChange={(event) => setPetName(event.target.value.slice(0, 18))} placeholder={PET_BY_ID[selectedPet].name} maxLength={18} /></label><button className="pet-primary" onClick={adopt} disabled={saving}><Heart size={17} /> {saving ? "Bringing them home…" : "Adopt together"}</button></div>
       </section>
-      <p className="pet-footnote">Adopting creates one shared pet for everyone in this space. Starter furniture and 250 coins are included.</p>
+      <p className="pet-footnote">Adopting creates one shared pet for everyone in this space. Choose a new pet or room style whenever you like.</p>
     </section>
   );
 
@@ -301,7 +295,7 @@ export default function PetRoom({ space, member, members = [] }) {
 
   return (
     <section className="pet-page" aria-label="Pet Room">
-      <header className="pet-heading"><div className="pet-heading-icon"><PawPrint size={26} /></div><div><div className="pet-eyebrow">YOUR SHARED LITTLE WORLD</div><h1>{state.pet.name}’s Pet Room</h1><p>Take care, collect cozy things, and make a home that feels like both of you.</p></div><div className="pet-wallet"><Coins size={18} /><strong>{state.coins}</strong><span>coins</span></div></header>
+      <header className="pet-heading"><div className="pet-heading-icon"><PawPrint size={26} /></div><div><div className="pet-eyebrow">YOUR SHARED LITTLE WORLD</div><h1>{state.pet.name}’s Pet Room</h1><p>Take care, collect cozy things, and make a home that feels like both of you.</p></div></header>
       {notice && <div className="pet-notice">{notice}</div>}
       {lastAction && <div className="pet-toast"><Sparkles size={16} /> {lastAction}</div>}
       <div className="pet-presence"><span className="pet-live-dot" /> Shared with {members.length} {members.length === 1 ? "member" : "members"}<span>·</span> Last shared change by {formatUpdatedBy(record?.updated_by, members)}</div>
@@ -332,17 +326,17 @@ export default function PetRoom({ space, member, members = [] }) {
         <aside className="pet-side-column">
           <section className="pet-panel pet-level-panel"><div className="pet-level-top"><div className="pet-level-badge"><Star size={18} fill="currentColor" /></div><div><strong>Level {level.level}</strong><small>{state.xp} total XP</small></div><span className="pet-level-next">{level.level >= 50 ? "MAX" : `${level.progress}/100 XP`}</span></div><div className="pet-xp-track"><span style={{ width: `${level.progress}%` }} /></div><p>Care together to earn XP and help {state.pet.name} grow.</p></section>
           <section className="pet-panel"><div className="pet-panel-heading"><div><span className="pet-eyebrow">LITTLE CHECK-IN</span><h3>How are they feeling?</h3></div><span className="pet-mood-emoji">{Math.min(...NEEDS.map((need) => needs[need.id])) >= 75 ? "🥰" : Math.min(...NEEDS.map((need) => needs[need.id])) >= 40 ? "🙂" : "🥺"}</span></div><div className="pet-needs-list">{NEEDS.map((need) => <div className="pet-need" key={need.id}><div className="pet-need-label"><span>{need.emoji} {need.label}</span><strong>{needs[need.id]}%</strong></div><div className="pet-need-track"><span style={{ width: `${needs[need.id]}%`, background: need.color }} /></div></div>)}</div></section>
-          <section className="pet-panel pet-care-panel"><div className="pet-panel-heading"><div><span className="pet-eyebrow">TODAY · +70 COINS AVAILABLE</span><h3>Care together</h3></div><span className="pet-streak"><Sparkles size={14} /> {state.daily.streak} day streak</span></div><p className="pet-care-intro">Each task earns 10 coins and 10 XP once a day. Complete all four for a 30-coin bonus.</p><div className="pet-care-actions">{[
+          <section className="pet-panel pet-care-panel"><div className="pet-panel-heading"><div><span className="pet-eyebrow">TODAY · UP TO 60 XP</span><h3>Care together</h3></div><span className="pet-streak"><Sparkles size={14} /> {state.daily.streak} day streak</span></div><p className="pet-care-intro">Complete each daily task for 10 XP, and finish all four for a 20 XP bonus.</p><div className="pet-care-actions">{[
             ["feed", "Feed", "🍓"], ["play", "Play", "🎾"], ["clean", "Freshen up", "🫧"], ["cuddle", "Cuddle", "🫶"], ["nap", "Nap", "🌙"],
-          ].map(([id, label, emoji]) => <button key={id} onClick={() => care(id)} disabled={saving} className={`pet-care-action ${state.daily.completed.includes(id) ? "done" : ""}`}><span>{emoji}</span><strong>{label}</strong>{state.daily.completed.includes(id) && <Check size={13} />}</button>)}</div><div className="pet-task-list">{DAILY_CARE.map((task) => <div className={state.daily.completed.includes(task.id) ? "done" : ""} key={task.id}><span className="pet-task-check">{state.daily.completed.includes(task.id) ? <Check size={13} /> : task.emoji}</span><span>{task.name}</span><strong>{state.daily.completed.includes(task.id) ? "Earned" : `+${task.reward} coins`}</strong></div>)}</div>{allDailyDone && <div className="pet-daily-complete">🌟 Today’s care is complete. Your pet feels so loved!</div>}</section>
+          ].map(([id, label, emoji]) => <button key={id} onClick={() => care(id)} disabled={saving} className={`pet-care-action ${state.daily.completed.includes(id) ? "done" : ""}`}><span>{emoji}</span><strong>{label}</strong>{state.daily.completed.includes(id) && <Check size={13} />}</button>)}</div><div className="pet-task-list">{DAILY_CARE.map((task) => <div className={state.daily.completed.includes(task.id) ? "done" : ""} key={task.id}><span className="pet-task-check">{state.daily.completed.includes(task.id) ? <Check size={13} /> : task.emoji}</span><span>{task.name}</span><strong>{state.daily.completed.includes(task.id) ? "Earned" : `+${task.xp} XP`}</strong></div>)}</div>{allDailyDone && <div className="pet-daily-complete">🌟 Today’s care is complete. Your pet feels so loved!</div>}</section>
         </aside>
       </div>}
 
       {tab === "shop" && <section className="pet-shop-page">
-        <div className="pet-shop-header"><div><span className="pet-eyebrow">THE LITTLE THINGS SHOP</span><h2>Make this room yours</h2><p>Everything you buy belongs to your shared collection.</p></div><div className="pet-shop-wallet"><Coins size={17} /> {state.coins} coins</div></div>
-        <div className="pet-theme-section"><div className="pet-subheading"><div><h3><Sparkles size={17} /> Room styles</h3><p>Choose a complete color palette for your home.</p></div></div><div className="pet-theme-grid">{ROOM_THEMES.map((option) => { const owned = state.ownedThemes.includes(option.id); return <button key={option.id} className={`pet-theme-card ${state.theme === option.id ? "current" : ""}`} onClick={() => setTheme(option)} style={{ "--room-wall": option.wall, "--room-floor": option.floor, "--room-accent": option.accent }} disabled={saving}><span className="pet-theme-swatch"><i /><i /></span><span className="pet-theme-copy"><strong>{option.emoji} {option.name}</strong><small>{owned ? state.theme === option.id ? "Current style" : "Owned · tap to use" : `${option.price} coins`}</small></span>{state.theme === option.id && <Check size={16} />}</button>; })}</div></div>
+        <div className="pet-shop-header"><div><span className="pet-eyebrow">THE LITTLE THINGS SHOP</span><h2>Make this room yours</h2><p>Every pet, room style, and decor item is free.</p></div></div>
+        <div className="pet-theme-section"><div className="pet-subheading"><div><h3><Sparkles size={17} /> Room styles</h3><p>Choose a complete color palette for your home.</p></div></div><div className="pet-theme-grid">{ROOM_THEMES.map((option) => { const owned = state.ownedThemes.includes(option.id); return <button key={option.id} className={`pet-theme-card ${state.theme === option.id ? "current" : ""}`} onClick={() => setTheme(option)} style={{ "--room-wall": option.wall, "--room-floor": option.floor, "--room-accent": option.accent }} disabled={saving}><span className="pet-theme-swatch"><i /><i /></span><span className="pet-theme-copy"><strong>{option.emoji} {option.name}</strong><small>{state.theme === option.id ? "Current style" : owned ? "Owned · tap to use" : "Free · tap to use"}</small></span>{state.theme === option.id && <Check size={16} />}</button>; })}</div></div>
         <div className="pet-catalog-heading"><div><h3><ShoppingBag size={17} /> Furniture & little treasures</h3><p>{DECOR.length} pieces to make your home feel like yours.</p></div><label className="pet-category-select"><span className="sr-only">Filter decor</span><select value={category} onChange={(event) => setCategory(event.target.value)}>{DECOR_CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select></label></div>
-        <div className="pet-shop-grid">{sortedDecor.map((item) => { const owned = state.ownedItems.includes(item.id); const isPlaced = item.slot === "pet" ? state.equipped === item.id : state.placed[item.slot] === item.id; return <article className={`pet-item-card ${owned ? "owned" : ""}`} key={item.id}><div className={`pet-item-art pet-item-${item.category.toLowerCase().replaceAll(" ", "-")}`}><span>{item.emoji}</span>{owned && <span className="pet-owned-mark"><Check size={13} /></span>}</div><div className="pet-item-copy"><strong>{item.name}</strong><p>{item.description}</p><div className="pet-item-bottom">{owned ? <button className={`pet-item-action ${isPlaced ? "placed" : ""}`} onClick={() => placeItem(item)} disabled={saving}>{isPlaced ? "Put away" : item.slot === "pet" ? "Equip" : "Place in room"}</button> : <button className="pet-buy-button" onClick={() => buyItem(item)} disabled={saving || state.coins < item.price}><Coins size={14} /> {item.price} coins</button>}</div></div></article>; })}</div>
+        <div className="pet-shop-grid">{sortedDecor.map((item) => { const owned = state.ownedItems.includes(item.id); const isPlaced = item.slot === "pet" ? state.equipped === item.id : state.placed[item.slot] === item.id; return <article className={`pet-item-card ${owned ? "owned" : ""}`} key={item.id}><div className={`pet-item-art pet-item-${item.category.toLowerCase().replaceAll(" ", "-")}`}><span>{item.emoji}</span>{owned && <span className="pet-owned-mark"><Check size={13} /></span>}</div><div className="pet-item-copy"><strong>{item.name}</strong><p>{item.description}</p><div className="pet-item-bottom">{owned ? <button className={`pet-item-action ${isPlaced ? "placed" : ""}`} onClick={() => placeItem(item)} disabled={saving}>{isPlaced ? "Put away" : item.slot === "pet" ? "Equip" : "Place in room"}</button> : <button className="pet-free-button" onClick={() => addItem(item)} disabled={saving}>Add free</button>}</div></div></article>; })}</div>
       </section>}
 
       {tab === "collection" && <section className="pet-collection-page"><div className="pet-shop-header"><div><span className="pet-eyebrow">YOUR SHARED COLLECTION</span><h2>All your treasures</h2><p>Place something in the room, or put it away until later.</p></div><div className="pet-collection-count"><Package size={17} /> {state.ownedItems.length} / {DECOR.length} items</div></div><div className="pet-collection-progress"><span style={{ width: `${Math.round(state.ownedItems.length / DECOR.length * 100)}%` }} /></div><div className="pet-collection-grid">{DECOR.filter((item) => state.ownedItems.includes(item.id)).map((item) => { const isPlaced = item.slot === "pet" ? state.equipped === item.id : state.placed[item.slot] === item.id; return <button className={`pet-collection-item ${isPlaced ? "active" : ""}`} key={item.id} onClick={() => placeItem(item)} disabled={saving}><span className="pet-collection-emoji">{item.emoji}</span><span className="pet-collection-copy"><strong>{item.name}</strong><small>{item.category} · {isPlaced ? item.slot === "pet" ? "wearing" : "in room" : "in collection"}</small></span><span className="pet-collection-action">{isPlaced ? "Put away" : "Place"}</span></button>; })}</div><div className="pet-collection-empty">{DECOR.length - state.ownedItems.length > 0 && <p>There are {DECOR.length - state.ownedItems.length} more things waiting in the <button onClick={() => setTab("shop")}>shop</button>.</p>}</div></section>}
@@ -350,7 +344,7 @@ export default function PetRoom({ space, member, members = [] }) {
       {tab === "trophies" && <section className="pet-achievements-page"><div className="pet-shop-header"><div><span className="pet-eyebrow">LITTLE THINGS ADD UP</span><h2>Your shared milestones</h2><p>Small routines, happy memories, and a home you built together.</p></div><div className="pet-achievement-count"><Trophy size={17} /> {achievements.filter((item) => item.done).length} / {achievements.length} earned</div></div><div className="pet-achievement-grid">{achievements.map((achievement) => <article className={`pet-achievement ${achievement.done ? "unlocked" : ""}`} key={achievement.id}><span>{achievement.emoji}</span><div><strong>{achievement.title}</strong><p>{achievement.text}</p></div><span className="pet-achievement-state">{achievement.done ? <Check size={16} /> : "🔒"}</span></article>)}</div><div className="pet-care-history"><div className="pet-care-history-icon"><Heart size={18} /></div><div><strong>{state.daily.streak} day{state.daily.streak === 1 ? "" : "s"} of showing up</strong><p>{state.daily.completedDay === todayKey() ? "All four care tasks are complete today. See you tomorrow for the next little ritual." : `${state.daily.completed.length} of 4 care tasks done today. A small check-in goes a long way.`}</p></div></div></section>}
 
       <footer className="pet-footnote">Your shared pet’s needs change gently over time, and never reach zero permanently. Your home and progress are saved together in your shared space.</footer>
-      {changePetOpen && <div className="pet-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setChangePetOpen(false); }}><section className="pet-change-dialog" role="dialog" aria-modal="true" aria-labelledby="pet-change-title"><button className="pet-modal-close" onClick={() => setChangePetOpen(false)} aria-label="Close pet selector">×</button><span className="pet-eyebrow">A NEW LITTLE LOOK</span><h2 id="pet-change-title">Choose a different pet</h2><p>Your room, coins, care progress, and collection will stay just as they are.</p><div className="pet-change-grid">{PETS.map((choice) => <button key={choice.id} className={`pet-change-choice ${replacementPet === choice.id ? "selected" : ""}`} onClick={() => setReplacementPet(choice.id)} style={{ "--pet-color": choice.color }}><span>{choice.emoji}</span><strong>{choice.name}</strong></button>)}</div><div className="pet-change-actions"><button className="pet-cancel-button" onClick={() => setChangePetOpen(false)}>Keep current pet</button><button className="pet-primary" onClick={changePet} disabled={saving || replacementPet === state.pet.id}>{saving ? "Changing pet…" : "Change pet"}</button></div></section></div>}
+      {changePetOpen && <div className="pet-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setChangePetOpen(false); }}><section className="pet-change-dialog" role="dialog" aria-modal="true" aria-labelledby="pet-change-title"><button className="pet-modal-close" onClick={() => setChangePetOpen(false)} aria-label="Close pet selector">×</button><span className="pet-eyebrow">A NEW LITTLE LOOK</span><h2 id="pet-change-title">Choose a different pet</h2><p>Your room, care progress, and collection will stay just as they are.</p><div className="pet-change-grid">{PETS.map((choice) => <button key={choice.id} className={`pet-change-choice ${replacementPet === choice.id ? "selected" : ""}`} onClick={() => setReplacementPet(choice.id)} style={{ "--pet-color": choice.color }}><span>{choice.emoji}</span><strong>{choice.name}</strong></button>)}</div><div className="pet-change-actions"><button className="pet-cancel-button" onClick={() => setChangePetOpen(false)}>Keep current pet</button><button className="pet-primary" onClick={changePet} disabled={saving || replacementPet === state.pet.id}>{saving ? "Changing pet…" : "Change pet"}</button></div></section></div>}
     </section>
   );
 }
