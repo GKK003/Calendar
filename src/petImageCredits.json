@@ -1,0 +1,164 @@
+[
+  {
+    "id": "cat",
+    "filename": "/pets/cat.jpg",
+    "title": "Tabby cat with blue eyes-3336579.jpg",
+    "artist": "AdinaVoicu",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Tabby_cat_with_blue_eyes-3336579.jpg"
+  },
+  {
+    "id": "dog",
+    "filename": "/pets/dog.jpg",
+    "title": "Picography-curious-dog-animal-pet-house-home-sm-1.jpg",
+    "artist": "Picography",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Picography-curious-dog-animal-pet-house-home-sm-1.jpg"
+  },
+  {
+    "id": "bunny",
+    "filename": "/pets/bunny.jpg",
+    "title": "Patches the Rabbit 2.jpg",
+    "artist": "Gluonman",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Patches_the_Rabbit_2.jpg"
+  },
+  {
+    "id": "fox",
+    "filename": "/pets/fox.jpg",
+    "title": "Portrait of a red fox in Rautas fjällurskog.jpg",
+    "artist": "ClaudiaTen",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Portrait_of_a_red_fox_in_Rautas_fj%C3%A4llurskog.jpg"
+  },
+  {
+    "id": "panda",
+    "filename": "/pets/panda.jpg",
+    "title": "Red Panda (25193861686).jpg",
+    "artist": "Mathias Appel",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Red_Panda_(25193861686).jpg"
+  },
+  {
+    "id": "frog",
+    "filename": "/pets/frog.jpg",
+    "title": "Brown Tree Frog 2.jpg",
+    "artist": "Noodle snacks",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Brown_Tree_Frog_2.jpg"
+  },
+  {
+    "id": "capybara",
+    "filename": "/pets/capybara.jpg",
+    "title": "046 Capybara by the river in Encontro das Águas State Park Photo by Giles Laurent.jpg",
+    "artist": "Giles Laurent",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:046_Capybara_by_the_river_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg"
+  },
+  {
+    "id": "otter",
+    "filename": "/pets/otter.jpg",
+    "title": "Sea-otter-morro-bay 13.jpg",
+    "artist": "Mike Baird from Morro Bay, USA (bairdphotos.com)",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Sea-otter-morro-bay_13.jpg"
+  },
+  {
+    "id": "dragon",
+    "filename": "/pets/dragon.jpg",
+    "title": "Pet Bearded Dragon.jpg",
+    "artist": "McSpuddles",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Pet_Bearded_Dragon.jpg"
+  },
+  {
+    "id": "penguin",
+    "filename": "/pets/penguin.jpg",
+    "title": "Magellanic penguin, Valdes Peninsula, e.jpg",
+    "artist": "David",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Magellanic_penguin,_Valdes_Peninsula,_e.jpg"
+  },
+  {
+    "id": "turtle",
+    "filename": "/pets/turtle.jpg",
+    "title": "Balkan pond turtle (Mauremys rivulata) Butrint.jpg",
+    "artist": "Charles J. Sharp",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Balkan_pond_turtle_(Mauremys_rivulata)_Butrint.jpg"
+  },
+  {
+    "id": "hamster",
+    "filename": "/pets/hamster.jpg",
+    "title": "Hamster in the yard.jpg",
+    "artist": "Lo",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Hamster_in_the_yard.jpg"
+  },
+  {
+    "id": "hedgehog",
+    "filename": "/pets/hedgehog.jpg",
+    "title": "Southern White-breasted Hedgehog in Orkhevi.jpg",
+    "artist": "David Osipov",
+    "license": "CC0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "source": "https://commons.wikimedia.org/wiki/File:Southern_White-breasted_Hedgehog_in_Orkhevi.jpg"
+  },
+  {
+    "id": "duckling",
+    "filename": "/pets/duckling.jpg",
+    "title": "Baby Duckling 3 - Looking at Me.jpg",
+    "artist": "Amaury Laporte",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Baby_Duckling_3_-_Looking_at_Me.jpg"
+  },
+  {
+    "id": "unicorn",
+    "filename": "/pets/unicorn.jpg",
+    "title": "Horse December 2014-1.jpg",
+    "artist": "Alvesgaspar",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Horse_December_2014-1.jpg"
+  },
+  {
+    "id": "koala",
+    "filename": "/pets/koala.jpg",
+    "title": "Koala climbing tree.jpg",
+    "artist": "Diliff",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Koala_climbing_tree.jpg"
+  },
+  {
+    "id": "raccoon",
+    "filename": "/pets/raccoon.jpg",
+    "title": "Raccoon (Procyon lotor) 2.jpg",
+    "artist": "Darkone",
+    "license": "CC BY-SA 2.5",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.5",
+    "source": "https://commons.wikimedia.org/wiki/File:Raccoon_(Procyon_lotor)_2.jpg"
+  },
+  {
+    "id": "butterfly",
+    "filename": "/pets/butterfly.jpg",
+    "title": "Butterfly Luc Viatour.JPG",
+    "artist": "Luc Viatour",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "source": "https://commons.wikimedia.org/wiki/File:Butterfly_Luc_Viatour.JPG"
+  }
+]
