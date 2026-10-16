@@ -16,8 +16,9 @@ Works on desktop and phone, with live sync for everyone in the shared space.
 2. Open **SQL Editor → New query**, paste the whole content of `supabase/schema.sql`, click **Run**.
 3. Run `supabase/chat.sql`, then `supabase/three-people.sql`, in that order. The current Chat page needs both; run them before inviting a third person.
 4. Run `supabase/social.sql`, `supabase/cinema.sql`, and `supabase/games.sql` to enable profile photos, posts, Cinema, and shared games.
-5. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
-6. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
+5. Run `supabase/pet.sql` to enable the shared virtual pet, room, care rewards, and furniture collection. Existing projects need to run this once before opening Pet Room.
+6. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
+7. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
 
 ## 2. Run it
 Use Node.js 20.19+ or 22.12+.

@@ -8,6 +8,7 @@ export const PATHS = {
   gallery: '/gallery',
   cinema: '/cinema',
   games: '/games',
+  pet: '/pet',
   chat: '/chat',
   profile: '/profile',
 }

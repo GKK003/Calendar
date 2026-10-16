@@ -34,6 +34,7 @@ import {
   MessageCircle,
   Film,
   Gamepad2,
+  PawPrint,
   Menu,
   X,
 } from "lucide-react";
@@ -64,6 +65,7 @@ import Gallery from "./Gallery.jsx";
 import Chat from "./Chat.jsx";
 import Cinema from "./Cinema.jsx";
 import Games from "./Games.jsx";
+import PetRoom from "./PetRoom.jsx";
 import CallOverlay from "./CallOverlay.jsx";
 import useChat from "./useChat.js";
 import { useView } from "./router.js";
@@ -456,7 +458,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     <div className="app">
       <div
         className={
-          "shell" + (view === "chat" || view === "cinema" || view === "games" ? " chat-mode" : "")
+          "shell" + (view === "chat" || view === "cinema" || view === "games" || view === "pet" ? " chat-mode" : "")
         }
       >
         <button
@@ -525,6 +527,14 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Games</span>
           </button>
           <button
+            className={"rail-btn" + (view === "pet" ? " on" : "")}
+            onClick={() => setView("pet")}
+            aria-label="Pet room"
+          >
+            <PawPrint size={20} />
+            <span>Pet Room</span>
+          </button>
+          <button
             className={"rail-btn" + (view === "chat" ? " on" : "")}
             onClick={() => {
               chat.closeChat();
@@ -558,7 +568,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </nav>
 
         <main className="main">
-          {view !== "chat" && view !== "cinema" && view !== "games" && (
+          {view !== "chat" && view !== "cinema" && view !== "games" && view !== "pet" && (
             <header className="top">
               <div className="hello-row">
                 <Avatar
@@ -620,7 +630,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             !pushHidden &&
             view !== "chat" &&
             view !== "cinema" &&
-        view !== "games" && (
+            view !== "games" &&
+            view !== "pet" && (
               <div className="push-banner">
                 <span>
                   Get notified about messages and calls, even when the app is
@@ -656,6 +667,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <Cinema space={space} userId={member.user_id} />
           ) : view === "games" ? (
             <Games space={space} member={member} members={members} />
+          ) : view === "pet" ? (
+            <PetRoom space={space} member={member} members={members} />
           ) : view === "today" ? (
             <Dashboard
               me={me}
