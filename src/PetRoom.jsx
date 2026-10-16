@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check, Heart, Home, Mic, MicOff, Package, PawPrint, Pencil, ShoppingBag,
-  Sparkles, Star, Store, Trophy,
+  Sparkles, Star, Store, Trophy, Volume2,
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import AnimatedPet from "./AnimatedPet.jsx";
