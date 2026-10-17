@@ -20,3 +20,9 @@
 .game-history-score{padding:6px 9px;border-radius:9px;background:#f8f0f4;color:#75546a;font-size:12px;font-weight:800;white-space:nowrap}
 .game-history-more{text-align:center;color:var(--muted);font-size:11px;margin:11px 0 0}
 @media(max-width:520px){.game-history{padding:14px;border-radius:16px}.game-history-heading{gap:9px}.game-history-icon{width:36px;height:36px;border-radius:11px}.game-history-row{gap:8px;padding:9px}.game-history-score{padding:5px 7px;font-size:11px}}
+.keyboard-row button.correct{background:#65a989;color:#fff}
+.keyboard-row button.present{background:#d9b75e;color:#fff}
+.keyboard-row button.absent{background:#9a9098;color:#fff}
+.keyboard-row button.correct:hover{background:#579878}
+.keyboard-row button.present:hover{background:#c6a64e}
+.keyboard-row button.absent:hover{background:#887f87}
