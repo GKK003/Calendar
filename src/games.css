@@ -26,3 +26,5 @@
 .keyboard-row button.correct:hover{background:#579878}
 .keyboard-row button.present:hover{background:#c6a64e}
 .keyboard-row button.absent:hover{background:#887f87}
+.keyboard-row .key-enter{max-width:48px;font-size:24px;line-height:1}
+@media(max-width:700px){.wordle-keyboard{width:100%;gap:8px}.keyboard-row{gap:4px}.keyboard-row button{height:50px;font-size:14px}.keyboard-row .key-wide{font-size:23px}}
