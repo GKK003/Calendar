@@ -17,8 +17,9 @@ Works on desktop and phone, with live sync for everyone in the shared space.
 3. Run `supabase/chat.sql`, then `supabase/three-people.sql`, in that order. The current Chat page needs both; run them before inviting a third person.
 4. Run `supabase/social.sql`, `supabase/cinema.sql`, and `supabase/games.sql` to enable profile photos, posts, Cinema, and shared games.
 5. Run `supabase/pet.sql` to enable the shared virtual pet, room, care progress, and furniture collection. Pets, room styles, and decor are all free. Existing projects need to run this once before opening Pet Room.
-6. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
-7. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
+6. Run `supabase/maps.sql` to enable shared places, opt-in live location sharing, location history, and circle alerts for Maps.
+7. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
+8. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
 
 ## 2. Run it
 Use Node.js 20.19+ or 22.12+.
@@ -97,6 +98,10 @@ The Chat page shows **one group chat** (everybody) and **a private chat with eac
 
 The initial setup runs `supabase/chat.sql` and then `supabase/three-people.sql`. For an existing database, run `chat.sql` if the chat tables are missing, then run `three-people.sql` once before inviting a third person. That migration moves existing two-person messages into their private chat. Deploy `supabase/functions/notify/index.ts` to the `notify` Edge Function if you use push notifications.
 
+## Maps and shared locations
+
+Run `supabase/maps.sql` once in the Supabase SQL Editor. Open **Maps** from the app menu to add shared places, see opt-in family locations, send a circle check-in or SOS, and review location activity. Location sharing is off until each person turns it on in Maps; browser location updates and arrival alerts run while the Maps page stays open and stop when you leave it. Map tiles use OpenStreetMap by default; tile requests reveal the map area being viewed. Circle SOS is an in-app alert and does not contact emergency services. Driving safety and crash detection need native phone capabilities and are not provided by this web page.
+
 Notes: the chat colour, nicknames and quick reaction are shared by all chats. Time zones still offer only Tbilisi and New York.
 
 ## Shared Wordle and Sudoku
@@ -105,6 +110,8 @@ The initial setup runs `supabase/games.sql`. If adding Games to an older setup, 
 
 1. In Supabase, open **Database → Publications** and confirm `shared_games` is included in `supabase_realtime` (the SQL migration adds it automatically when permissions allow).
 2. Install dependencies with `npm install`, then run `npm run dev`.
-3. Sign in with two accounts joined to the same shared space, open **Games**, and select Wordle or Sudoku. Both people use the same board; moves are stored in Supabase and broadcast with Realtime.
+3. Sign in with two accounts joined to the same shared space, open **Games**, and select English Wordle, Georgian Wordle, or Sudoku. Both people use the same board for the selected game; moves are stored in Supabase and broadcast with Realtime.
+
+To enable the separate Georgian Wordle board on an existing Supabase setup, run `supabase/georgian-wordle.sql` in the SQL Editor once. It adds `wordle-ka` to the allowed game types; the existing English Wordle state and history stay in their own row.
 
 The game table is protected by row-level security so signed-in users can access only their own shared space. Wordle's answer is currently part of the shared game state, so this is intended for casual cooperative play rather than cheat-resistant competitive play. For competitive play, move answer selection and guess scoring into a server-side database function or trusted backend.

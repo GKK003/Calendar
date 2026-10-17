@@ -1302,7 +1302,7 @@ label.check {
   letter-spacing: 1.8px;
 }
 .rail::after {
-  content: "NAVIGATION INDEX — 01 / 08";
+  content: "NAVIGATION / FAMILY SPACE";
   margin-top: auto;
   flex-shrink: 0;
   padding-top: clamp(6px, 1.5dvh, 18px);

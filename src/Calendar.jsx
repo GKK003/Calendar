@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   addMonths,
@@ -28,6 +28,7 @@ import {
   Trash2,
   User,
   MapPin,
+  Map,
   Sparkles,
   Home,
   Images,
@@ -73,6 +74,8 @@ import useCall from "./useCall.js";
 import usePush from "./usePush.js";
 import usePosts from "./usePosts.js";
 import "./special.css";
+
+const Maps = lazy(() => import("./Maps.jsx"));
 
 export default function Calendar({ session, member, space, onProfileChange }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -487,6 +490,14 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Today</span>
           </button>
           <button
+            className={"rail-btn" + (view === "maps" ? " on" : "")}
+            onClick={() => setView("maps")}
+            aria-label="Maps"
+          >
+            <Map size={20} />
+            <span>Maps</span>
+          </button>
+          <button
             className={"rail-btn" + (view === "month" ? " on" : "")}
             onClick={() => setView("month")}
             aria-label="Month view"
@@ -681,6 +692,16 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               onNewEvent={() => openNew(ymd(new Date()))}
               onOpenCalendar={() => setView("month")}
             />
+          ) : view === "maps" ? (
+            <Suspense fallback={<div className="center muted">Loading map…</div>}>
+              <Maps
+                space={space}
+                me={me}
+                members={members}
+                events={localEvents}
+                colorOf={colorOf}
+              />
+            </Suspense>
           ) : view === "gallery" ? (
             <Gallery
               shots={postsApi.gallery}

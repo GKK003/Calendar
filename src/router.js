@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 // view name <-> URL path
 export const PATHS = {
   today: '/',
+  maps: '/maps',
   month: '/month',
   year: '/year',
   gallery: '/gallery',

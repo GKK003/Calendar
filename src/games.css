@@ -27,4 +27,9 @@
 .keyboard-row button.present:hover{background:#c6a64e}
 .keyboard-row button.absent:hover{background:#887f87}
 .keyboard-row .key-enter{max-width:48px;font-size:24px;line-height:1}
-@media(max-width:700px){.wordle-keyboard{width:100%;gap:8px}.keyboard-row{gap:4px}.keyboard-row button{height:50px;font-size:14px}.keyboard-row .key-wide{font-size:23px}}
+@media(max-width:700px){.wordle-keyboard{width:100%;gap:8px}.keyboard-row{gap:4px}.keyboard-row button{height:50px;font-size:14px}.keyboard-row .key-wide:not(.key-backspace){font-size:23px}.keyboard-row .key-backspace{display:grid;place-items:center;padding:0;font-size:16px;line-height:1}}
+.wordle-header-tools{display:flex;align-items:center;gap:9px;flex:none}
+.wordle-language-toggle{display:flex;gap:3px;padding:4px;border:1px solid var(--line);border-radius:11px;background:#f7f1f4}
+.wordle-language-toggle button{padding:8px 10px;border-radius:8px;color:var(--muted);font-size:11px;font-weight:750;white-space:nowrap}
+.wordle-language-toggle button.active{background:#fff;color:var(--pink-deep);box-shadow:0 2px 7px #6b375c12}
+@media(max-width:700px){.wordle-header-tools{width:100%;justify-content:space-between}.wordle-language-toggle button{padding:7px 9px}}

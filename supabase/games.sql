@@ -1,8 +1,8 @@
--- Shared Wordle and Sudoku boards. Run once in Supabase SQL Editor.
+-- Shared English/Georgian Wordle and Sudoku boards. Run once in Supabase SQL Editor.
 create table if not exists public.shared_games (
   id uuid primary key default gen_random_uuid(),
   space_id uuid not null references public.spaces(id) on delete cascade,
-  game_type text not null check (game_type in ('wordle', 'sudoku')),
+  game_type text not null check (game_type in ('wordle', 'wordle-ka', 'sudoku')),
   state jsonb not null,
   updated_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),

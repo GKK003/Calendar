@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, RotateCcw, Users, Gamepad2, Grid3X3, Keyboard, History, Trophy } from "lucide-react";
 import { supabase } from "./supabase.js";
 import VALID_WORDS from "./word-list.json";
+import GEORGIAN_WORD_DATA from "./word-list-ka.json";
 import { usePath, navigate } from "./router.js";
 import { generatePuzzle, DIFFICULTIES } from "./sudoku.js";
 import "./games.css";
 
 const WORDS = ["APPLE","BRAVE","CHAIR","DREAM","EARTH","FLAME","GRAPE","HEART","JUICE","KNIFE","LEMON","MUSIC","NIGHT","OCEAN","PEACH","QUIET","ROBOT","SMILE","TRAIN","WATER","PLANT","CLOUD","BREAD","LIGHT","HOUSE","GREEN","STONE","WORLD","PARTY","SUGAR","TIGER","RIVER","SHEEP","MOUSE","CROWN","BEACH","SWEET","HAPPY","MAGIC","PIZZA"];
+const KA_LETTER_ROWS = ["აბგდევზთიკ", "ლმნოპჟრს", "ტუფქღყშჩ", "ცძწჭხჯჰ"];
+const KA_LETTERS = new Set([...KA_LETTER_ROWS.join("")]);
+const KA_GUESSES = new Set(GEORGIAN_WORD_DATA.guesses);
 const PUZZLE = [
   [5,3,0,0,7,0,0,0,0],[6,0,0,1,9,5,0,0,0],[0,9,8,0,0,0,0,6,0],
   [8,0,0,0,6,0,0,0,3],[4,0,0,8,0,3,0,0,1],[7,0,0,0,2,0,0,0,6],
@@ -17,12 +21,15 @@ const SOLUTION = [
   [8,5,9,7,6,1,4,2,3],[4,2,6,8,5,3,7,9,1],[7,1,3,9,2,4,8,5,6],
   [9,6,1,5,3,7,2,8,4],[2,8,7,4,1,9,6,3,5],[3,4,5,2,8,6,1,7,9]
 ];
-const wordState = (history = []) => ({ answer: WORDS[Math.floor(Math.random()*WORDS.length)], guesses: [], current: "", status: "playing", lastBy: null, startedAt: new Date().toISOString(), history });
+const wordState = (history = [], language = "en") => {
+  const answers = language === "ka" ? GEORGIAN_WORD_DATA.answers : WORDS;
+  return { answer: answers[Math.floor(Math.random()*answers.length)], guesses: [], current: "", status: "playing", lastBy: null, startedAt: new Date().toISOString(), history };
+};
 const sudokuState = (difficulty = "normal", history = []) => { const { puzzle, solution } = generatePuzzle(difficulty); return { puzzle, solution, difficulty, values: puzzle.map(r=>r.slice()), selected: [0,0], status: "playing", lastBy: null, startedAt: new Date().toISOString(), moves: 0, history }; };
 const makeHistoryRecord = (game, previous, completed, updatedBy, completedAt = new Date()) => {
   const completedMs = completedAt.getTime();
   const id = `${completedMs}-${Math.random().toString(36).slice(2, 8)}`;
-  if (game === "wordle") {
+  if (game === "wordle" || game === "wordle-ka") {
     const guesses = Array.isArray(completed.guesses) ? completed.guesses : [];
     return {
       id, game_type: game, status: completed.status, completed_at: completedAt.toISOString(),
@@ -50,7 +57,10 @@ const formatHistoryDate = (value) => {
 
 export default function Games({ space, member, members }) {
   const path = usePath();
-  const game = path.startsWith("/games/sudoku") ? "sudoku" : "wordle";
+  const game = path.startsWith("/games/sudoku") ? "sudoku" : path.startsWith("/games/wordle-ka") ? "wordle-ka" : "wordle";
+  const isWordle = game === "wordle" || game === "wordle-ka";
+  const isGeorgian = game === "wordle-ka";
+  const wordLanguage = isGeorgian ? "ka" : "en";
   const setGame = (g) => navigate("/games/" + g);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +75,7 @@ export default function Games({ space, member, members }) {
     const { data, error } = await supabase.from("shared_games").select("*").eq("space_id", space.id).eq("game_type", game).maybeSingle();
     if (error) setNotice("Games database isn't set up yet. Run supabase/games.sql in your Supabase SQL Editor.");
     else if (data) {
-      const ok = game === "wordle" ? Array.isArray(data.state?.guesses) : Array.isArray(data.state?.values) && Array.isArray(data.state?.puzzle) && Array.isArray(data.state?.solution);
+      const ok = isWordle ? Array.isArray(data.state?.guesses) : Array.isArray(data.state?.values) && Array.isArray(data.state?.puzzle) && Array.isArray(data.state?.solution);
       if (ok) {
         const storedState = data.state;
         let history = Array.isArray(storedState.history) ? storedState.history : [];
@@ -80,21 +90,21 @@ export default function Games({ space, member, members }) {
       }
       else {
         const history = Array.isArray(data.state?.history) ? data.state.history : [];
-        const fresh = game === "wordle" ? wordState(history) : sudokuState("normal", history);
+        const fresh = isWordle ? wordState(history, wordLanguage) : sudokuState("normal", history);
         await supabase.from("shared_games").update({state:fresh, updated_by:member.user_id, updated_at:new Date().toISOString()}).eq("id", data.id);
         setSession({ ...data, state: fresh });
       }
     }
     else {
-      const initial_state = game === "wordle" ? wordState() : sudokuState();
+      const initial_state = isWordle ? wordState([], wordLanguage) : sudokuState();
       const { data: created, error: createError } = await supabase.from("shared_games").insert({space_id:space.id, game_type:game, state:initial_state, updated_by:member.user_id}).select().single();
       if (createError) {
         const { data: retry } = await supabase.from("shared_games").select("*").eq("space_id",space.id).eq("game_type",game).maybeSingle();
-        if (retry) setSession(retry); else setNotice("Couldn't create the shared board. Check the games SQL setup and try again.");
+        if (retry) setSession(retry); else setNotice(isGeorgian ? "ქართული Wordle-ის ჩასართავად გაუშვით supabase/georgian-wordle.sql Supabase SQL Editor-ში." : "Couldn't create the shared board. Check the games SQL setup and try again.");
       } else setSession(created);
     }
     setLoading(false);
-  }, [space.id, game, member.user_id]);
+  }, [space.id, game, isWordle, wordLanguage, member.user_id]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -132,7 +142,7 @@ export default function Games({ space, member, members }) {
   };
   const reset = () => {
     const history = Array.isArray(state?.history) ? state.history : [];
-    commit(game === "wordle" ? wordState(history) : sudokuState(state?.difficulty || "normal", history));
+    commit(isWordle ? wordState(history, wordLanguage) : sudokuState(state?.difficulty || "normal", history));
   };
   const startSudoku = (difficulty) => {
     if (!state) return;
@@ -141,20 +151,23 @@ export default function Games({ space, member, members }) {
     commit(sudokuState(difficulty, Array.isArray(state.history) ? state.history : []));
   };
   const rawState = session && session.game_type === game ? session.state : null;
-  const validState = rawState && (game === "wordle" ? Array.isArray(rawState.guesses) : Array.isArray(rawState.values) && Array.isArray(rawState.puzzle) && Array.isArray(rawState.solution));
+  const validState = rawState && (isWordle ? Array.isArray(rawState.guesses) : Array.isArray(rawState.values) && Array.isArray(rawState.puzzle) && Array.isArray(rawState.solution));
   const state = validState ? rawState : null;
   const wordGuess = (letter) => {
     if (!state || state.status !== "playing") return;
     const current = (state.current || "");
     if (letter === "BACKSPACE") return commit({...state,current:current.slice(0,-1),lastBy:member.user_id});
     if (letter === "ENTER") {
-      if (current.length !== 5) return setNotice("Enter a five-letter word first.");
-      if (!VALID_WORDS.includes(current.toLowerCase())) return setNotice("That word is not in the game word list. Try another.");
-      const guesses = [...state.guesses, {word:current, by:member.user_id}];
-      const status = current === state.answer ? "won" : guesses.length >= 6 ? "lost" : "playing";
+      if ([...current].length !== 5) return setNotice(isGeorgian ? "ჯერ შეიყვანეთ ხუთასოიანი სიტყვა." : "Enter a five-letter word first.");
+      const submitted = isGeorgian ? current : current.toUpperCase();
+      const isValid = isGeorgian ? KA_GUESSES.has(submitted) : VALID_WORDS.includes(submitted.toLowerCase());
+      if (!isValid) return setNotice(isGeorgian ? "ეს სიტყვა ლექსიკონში ვერ მოიძებნა. სცადეთ სხვა სიტყვა." : "That word is not in the game word list. Try another.");
+      const guesses = [...state.guesses, {word:submitted, by:member.user_id}];
+      const status = submitted === state.answer ? "won" : guesses.length >= 6 ? "lost" : "playing";
       return commit({...state,guesses,current:"",status,lastBy:member.user_id});
     }
-    if (/^[A-Z]$/.test(letter) && current.length < 5) commit({...state,current:current+letter,lastBy:member.user_id});
+    const nextLetter = isGeorgian ? letter : letter.toUpperCase();
+    if ((isGeorgian ? KA_LETTERS.has(nextLetter) : /^[A-Z]$/.test(nextLetter)) && [...current].length < 5) commit({...state,current:current+nextLetter,lastBy:member.user_id});
   };
   const sudokuSet = (n) => {
     if (!state || !state.selected || state.status === "won") return;
@@ -173,8 +186,11 @@ export default function Games({ space, member, members }) {
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
 
-      if (game === "wordle") {
-        if (/^[a-z]$/i.test(event.key)) {
+      if (isWordle) {
+        if (isGeorgian && KA_LETTERS.has(event.key)) {
+          event.preventDefault();
+          wordGuess(event.key);
+        } else if (!isGeorgian && /^[a-z]$/i.test(event.key)) {
           event.preventDefault();
           wordGuess(event.key.toUpperCase());
         } else if (event.key === "Enter") {
@@ -206,7 +222,7 @@ export default function Games({ space, member, members }) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [game, state, wordGuess, sudokuSet, selectCell]);
+  }, [game, isWordle, isGeorgian, state, wordGuess, sudokuSet, selectCell]);
 
   const score = (guess, index) => {
     const answer = state.answer.split(""); const result = Array(5).fill("absent");
@@ -215,7 +231,7 @@ export default function Games({ space, member, members }) {
     return result;
   };
   const keyStates = {};
-  if (game === "wordle" && state) {
+  if (isWordle && state) {
     const rank = { absent: 1, present: 2, correct: 3 };
     state.guesses.forEach((guess, guessIndex) => {
       score(guess.word, guessIndex).forEach((result, index) => {
@@ -229,20 +245,22 @@ export default function Games({ space, member, members }) {
   const wins = history.filter(item => item.status === "won");
   const bestWordle = wins.filter(item => Number.isFinite(item.guesses)).reduce((best, item) => Math.min(best, item.guesses), Infinity);
   const bestSudoku = wins.filter(item => Number.isFinite(item.duration_seconds)).reduce((best, item) => !best || item.duration_seconds < best.duration_seconds ? item : best, null);
-  const historySummary = game === "wordle"
-    ? `${wins.length} solved · ${history.length} played${Number.isFinite(bestWordle) ? ` · best ${bestWordle}/6` : ""}`
+  const historySummary = isWordle
+    ? isGeorgian
+      ? `${wins.length} მოგებული · ${history.length} თამაში${Number.isFinite(bestWordle) ? ` · საუკეთესო ${bestWordle}/6` : ""}`
+      : `${wins.length} solved · ${history.length} played${Number.isFinite(bestWordle) ? ` · best ${bestWordle}/6` : ""}`
     : `${wins.length} puzzles solved${bestSudoku ? ` · best ${formatDuration(bestSudoku.duration_seconds)} (${DIFFICULTIES[bestSudoku.difficulty]?.label || "Normal"})` : ""}`;
 
   return <section className="games-page">
     <header className="games-heading"><div className="games-icon"><Gamepad2 size={25}/></div><div><p className="games-eyebrow">YOUR SHARED SPACE</p><h1>Play together</h1><p className="games-subtitle">One board, two players. Every move syncs to both screens.</p></div></header>
     <div className="games-presence"><Users size={17}/><span>{member.display_name}</span><span className="presence-dot"/><span>{partner ? partner.display_name + " is your teammate" : "Waiting for your teammate"}</span><span className="live-pill">LIVE SYNC</span></div>
-    <div className="games-tabs"><button className={game === "wordle" ? "active" : ""} onClick={()=>setGame("wordle")}><Keyboard size={18}/> Wordle</button><button className={game === "sudoku" ? "active" : ""} onClick={()=>setGame("sudoku")}><Grid3X3 size={18}/> Sudoku</button></div>
+    <div className="games-tabs"><button className={isWordle ? "active" : ""} onClick={()=>setGame("wordle")}><Keyboard size={18}/> Wordle</button><button className={game === "sudoku" ? "active" : ""} onClick={()=>setGame("sudoku")}><Grid3X3 size={18}/> Sudoku</button></div>
     {notice && <div className="games-notice" role="status">{notice}</div>}
-    {loading || !state ? <div className="games-loading">Loading shared board…</div> : game === "wordle" ? <div className="game-card wordle-card">
-      <div className="game-card-head"><div><h2>Wordle together</h2><p>Work together to find the five-letter word in six guesses. Type letters on your keyboard, press Enter to submit, and Backspace to erase.</p></div><button className="games-reset" onClick={reset} title="Start a new game"><RotateCcw size={17}/> New game</button></div>
-      <div className="wordle-board" aria-label="Shared Wordle board">{Array.from({length:6},(_,ri)=>{const guess=state.guesses[ri];const letters=guess?guess.word:ri===state.guesses.length?state.current:"";const colors=guess?score(guess.word,ri):[];return <div className="wordle-row" key={ri}>{Array.from({length:5},(_,ci)=><div key={ci} className={`wordle-tile ${guess?colors[ci]:letters[ci]?"filled":""}`} aria-label={letters[ci]||"empty"}>{letters[ci]||""}</div>)}</div>})}</div>
-      <div className="wordle-keyboard">{["QWERTYUIOP","ASDFGHJKL"].map(row=><div className="keyboard-row" key={row}>{row.split("").map(k=><button key={k} className={keyStates[k] || ""} aria-label={`${k}${keyStates[k] ? `, ${keyStates[k]}` : ""}`} onClick={()=>wordGuess(k)}>{k}</button>)}</div>)}<div className="keyboard-row"><button className="key-wide key-backspace" aria-label="Backspace" title="Backspace" onClick={()=>wordGuess("BACKSPACE")}>⌫</button>{"ZXCVBNM".split("").map(k=><button key={k} className={keyStates[k] || ""} aria-label={`${k}${keyStates[k] ? `, ${keyStates[k]}` : ""}`} onClick={()=>wordGuess(k)}>{k}</button>)}<button className="key-wide key-enter" aria-label="Enter guess" title="Enter guess" onClick={()=>wordGuess("ENTER")}>↵</button></div></div>
-      <div className="games-status">{state.status === "won" ? <><Check size={17}/> You solved it together! The word was {state.answer}.</> : state.status === "lost" ? <>The word was {state.answer}. Start a new game to play again.</> : <>Last move: <strong>{lastName}</strong> · {state.guesses.length}/6 guesses used</>}</div>
+    {loading || !state ? <div className="games-loading">Loading shared board…</div> : isWordle ? <div className="game-card wordle-card">
+      <div className="game-card-head"><div><h2>{isGeorgian ? "ქართული Wordle" : "Wordle together"}</h2><p>{isGeorgian ? "გამოიცანით ხუთასოიანი სიტყვა ექვს ცდაში. გამოიყენეთ ქვემოთ მოცემული ქართული კლავიატურა ან აკრიფეთ ქართულად." : "Work together to find the five-letter word in six guesses. Type letters on your keyboard, press Enter to submit, and Backspace to erase."}</p></div><div className="wordle-header-tools"><div className="wordle-language-toggle" role="group" aria-label="Wordle language"><button className={!isGeorgian ? "active" : ""} onClick={()=>setGame("wordle")}>English</button><button className={isGeorgian ? "active" : ""} onClick={()=>setGame("wordle-ka")}>ქართული</button></div><button className="games-reset" onClick={reset} title={isGeorgian ? "ახალი თამაში" : "Start a new game"}><RotateCcw size={17}/>{isGeorgian ? "ახალი თამაში" : "New game"}</button></div></div>
+      <div className="wordle-board" aria-label={isGeorgian ? "ქართული Wordle-ის დაფა" : "Shared Wordle board"}>{Array.from({length:6},(_,ri)=>{const guess=state.guesses[ri];const letters=guess?guess.word:ri===state.guesses.length?state.current:"";const colors=guess?score(guess.word,ri):[];return <div className="wordle-row" key={ri}>{Array.from({length:5},(_,ci)=><div key={ci} className={`wordle-tile ${guess?colors[ci]:letters[ci]?"filled":""}`} aria-label={letters[ci]||"empty"}>{letters[ci]||""}</div>)}</div>})}</div>
+      <div className="wordle-keyboard">{(isGeorgian ? KA_LETTER_ROWS.slice(0, 3) : ["QWERTYUIOP","ASDFGHJKL"]).map(row=><div className="keyboard-row" key={row}>{[...row].map(k=><button key={k} className={keyStates[k] || ""} aria-label={`${k}${keyStates[k] ? `, ${keyStates[k]}` : ""}`} onClick={()=>wordGuess(k)}>{k}</button>)}</div>)}<div className="keyboard-row"><button className="key-wide key-backspace" aria-label={isGeorgian ? "წაშლა" : "Backspace"} title={isGeorgian ? "წაშლა" : "Backspace"} onClick={()=>wordGuess("BACKSPACE")}>⌫</button>{[...(isGeorgian ? KA_LETTER_ROWS[3] : "ZXCVBNM")].map(k=><button key={k} className={keyStates[k] || ""} aria-label={`${k}${keyStates[k] ? `, ${keyStates[k]}` : ""}`} onClick={()=>wordGuess(k)}>{k}</button>)}<button className="key-wide key-enter" aria-label={isGeorgian ? "შეყვანა" : "Enter guess"} title={isGeorgian ? "შეყვანა" : "Enter guess"} onClick={()=>wordGuess("ENTER")}>↵</button></div></div>
+      <div className="games-status">{state.status === "won" ? <><Check size={17}/> {isGeorgian ? `ერთად გამოიცანით! სიტყვა იყო ${state.answer}.` : `You solved it together! The word was ${state.answer}.`}</> : state.status === "lost" ? (isGeorgian ? `სიტყვა იყო ${state.answer}. დაიწყეთ ახალი თამაში.` : `The word was ${state.answer}. Start a new game to play again.`) : <>{isGeorgian ? "ბოლო სვლა" : "Last move"}: <strong>{lastName}</strong> · {state.guesses.length}/6 {isGeorgian ? "ცდა გამოყენებულია" : "guesses used"}</>}</div>
     </div> : <div className="game-card sudoku-card">
       <div className="game-card-head"><div><h2>Shared Sudoku</h2><p>Pick a difficulty, then choose any empty cell and fill it. Your teammate sees each number live.</p></div><button className="games-reset" onClick={reset} title="Start a new puzzle"><RotateCcw size={17}/> New puzzle</button></div>
       <div className="difficulty-tabs" role="group" aria-label="Difficulty">{Object.entries(DIFFICULTIES).map(([key,d])=><button key={key} className={(state.difficulty||"normal")===key?"active":""} onClick={()=>startSudoku(key)}>{d.label}</button>)}</div>
@@ -250,17 +268,19 @@ export default function Games({ space, member, members }) {
       <div className="sudoku-controls"><p className="sudoku-label">Selected cell</p><div className="number-pad">{[1,2,3,4,5,6,7,8,9].map(n=><button key={n} onClick={()=>sudokuSet(n)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>{n}</button>)}<button className="clear-number" onClick={()=>sudokuSet(0)} disabled={state.puzzle[state.selected[0]][state.selected[1]]!==0}>Clear</button></div><p className="games-tip">Click a cell, then type 1–9 on your keyboard. Use Backspace or Delete to clear, and arrow keys to move between cells. Numbers sync instantly.</p></div></div>
       <div className="games-status">{state.status === "won" ? <><Check size={17}/> Puzzle completed together!</> : <>Last move: <strong>{lastName}</strong> · {DIFFICULTIES[state.difficulty||"normal"].label} puzzle</>}</div>
     </div>}
-    {state && !loading && <section className="game-history" aria-label="Game score history">
-      <div className="game-history-heading"><div className="game-history-icon"><History size={19}/></div><div><h2>Score history</h2><p>{history.length ? historySummary : "Completed games will show up here."}</p></div><span className="game-history-count">{history.length} {history.length === 1 ? "game" : "games"}</span></div>
+    {state && !loading && <section className="game-history" aria-label={isGeorgian ? "თამაშების ისტორია" : "Game score history"}>
+      <div className="game-history-heading"><div className="game-history-icon"><History size={19}/></div><div><h2>{isGeorgian ? "თამაშების ისტორია" : "Score history"}</h2><p>{history.length ? historySummary : isGeorgian ? "დასრულებული თამაშები აქ გამოჩნდება." : "Completed games will show up here."}</p></div><span className="game-history-count">{history.length} {isGeorgian ? "თამაში" : history.length === 1 ? "game" : "games"}</span></div>
       {history.length > 0 && <div className="game-history-list">{history.slice(0, 20).map((item, index) => {
         const won = item.status === "won";
-        const title = game === "wordle"
-          ? won ? `Solved in ${item.guesses} ${item.guesses === 1 ? "guess" : "guesses"}` : `Not solved · ${item.guesses || 0}/6 guesses`
+        const title = isWordle
+          ? isGeorgian
+            ? won ? `${item.guesses} ცდაში გამოიცანით` : `ვერ გამოიცანით · ${item.guesses || 0}/6 ცდა`
+            : won ? `Solved in ${item.guesses} ${item.guesses === 1 ? "guess" : "guesses"}` : `Not solved · ${item.guesses || 0}/6 guesses`
           : `Solved · ${DIFFICULTIES[item.difficulty]?.label || "Normal"}`;
-        const detail = game === "wordle"
-          ? `${formatHistoryDate(item.completed_at)} · Word: ${(item.answer || "").toUpperCase()}`
+        const detail = isWordle
+          ? `${formatHistoryDate(item.completed_at)} · ${isGeorgian ? "სიტყვა" : "Word"}: ${isGeorgian ? item.answer || "" : (item.answer || "").toUpperCase()}`
           : `${formatHistoryDate(item.completed_at)} · ${item.moves ?? "—"} moves`;
-        const scoreText = game === "wordle" ? `${item.guesses || 0}/6` : formatDuration(item.duration_seconds);
+        const scoreText = isWordle ? `${item.guesses || 0}/6` : formatDuration(item.duration_seconds);
         return <div className="game-history-row" key={item.id || `${item.completed_at}-${index}`}>
           <span className={`game-history-result${won ? " won" : " lost"}`}>{won ? <Trophy size={17}/> : <RotateCcw size={16}/>}</span>
           <span className="game-history-copy"><strong>{title}</strong><small>{detail}</small></span>
