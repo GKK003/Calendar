@@ -318,8 +318,9 @@ export default function Maps({ space, me, members, events, colorOf }) {
     }
     const next = { ...insideRef.current }
     for (const place of places) {
-      const inside = METERS(currentPoint.latitude, currentPoint.longitude, place.latitude, place.longitude) <= place.radius_m
       const previous = insideRef.current[place.id]
+      const distance = METERS(currentPoint.latitude, currentPoint.longitude, place.latitude, place.longitude)
+      const inside = distance <= place.radius_m + (previous === true ? 30 : 0)
       if (previous !== undefined && previous !== inside) {
         const kind = inside ? 'place_enter' : 'place_exit'
         const message = inside ? `${me.display_name} arrived at ${place.name}` : `${me.display_name} left ${place.name}`
@@ -605,7 +606,7 @@ export default function Maps({ space, me, members, events, colorOf }) {
             {places.length === 0 ? <p className="maps-empty-copy">Add a home, school, or another shared place. Circle alerts work while a member is sharing location on this page.</p> : <div className="maps-place-list">
               {places.map((place) => (
                 <div className="maps-place-row" key={place.id}>
-                  <button className="maps-place-main" onClick={() => focus(place.latitude, place.longitude)}><span className="maps-place-icon"><Home size={16} /></span><span><strong>{place.name}</strong><small>Alert radius · {place.radius_m} m</small></span></button>
+                  <button className="maps-place-main" onClick={() => focus(place.latitude, place.longitude)}><span className="maps-place-icon"><MapPin size={16} /></span><span><strong>{place.name}</strong><small>Alert radius · {place.radius_m} m</small></span></button>
                   <button className="maps-icon-action" onClick={() => openDirections(`${place.latitude},${place.longitude}`, ownPoint)} title={`Directions to ${place.name}`}><Route size={15} /></button>
                   <button className="maps-icon-action remove" onClick={() => removePlace(place)} title={`Remove ${place.name}`}><Trash2 size={15} /></button>
                 </div>
@@ -663,11 +664,12 @@ export default function Maps({ space, me, members, events, colorOf }) {
       {draft && <div className="maps-modal-scrim" onMouseDown={(event) => event.target === event.currentTarget && setDraft(null)}>
         <form className="maps-place-dialog" onSubmit={savePlace}>
           <button type="button" className="maps-dialog-close" onClick={() => setDraft(null)} aria-label="Close"><X size={18} /></button>
-          <span className="maps-dialog-icon"><Home size={20} /></span>
+          <span className="maps-dialog-icon"><MapPin size={20} /></span>
           <p className="maps-panel-kicker">NEW SHARED PLACE</p>
-          <h2>Save this spot</h2>
+          <h2>Add a place</h2>
+          <p className="maps-dialog-help">Choose any name you like. It can be Home, work, or somewhere else.</p>
           <p className="maps-dialog-coords">{draft.latitude.toFixed(5)}, {draft.longitude.toFixed(5)}</p>
-          <label>Place name<input autoFocus maxLength={60} value={placeName} onChange={(event) => setPlaceName(event.target.value)} placeholder="Home, school, practice…" required /></label>
+          <label>Place name<input autoFocus maxLength={60} value={placeName} onChange={(event) => setPlaceName(event.target.value)} placeholder="e.g. Gym, Grandma’s, school" required /></label>
           <label>Arrival alert radius<select value={placeRadius} onChange={(event) => setPlaceRadius(event.target.value)}><option value="100">100 meters</option><option value="150">150 meters</option><option value="300">300 meters</option><option value="500">500 meters</option></select></label>
           <div className="maps-dialog-actions"><button type="button" className="maps-cancel-btn" onClick={() => setDraft(null)}>Cancel</button><button type="submit" className="maps-share-btn" disabled={busy || !placeName.trim()}>{busy ? 'Saving…' : 'Save place'}</button></div>
         </form>

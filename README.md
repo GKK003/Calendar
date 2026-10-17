@@ -100,7 +100,7 @@ The initial setup runs `supabase/chat.sql` and then `supabase/three-people.sql`.
 
 ## Maps and shared locations
 
-Run `supabase/maps.sql` once in the Supabase SQL Editor. Open **Maps** from the app menu to add shared places, see opt-in family locations, send a circle check-in or SOS, and review location activity. Location sharing is off until each person turns it on in Maps; browser location updates and arrival alerts run while the Maps page stays open and stop when you leave it. Map tiles use OpenStreetMap by default; tile requests reveal the map area being viewed. Circle SOS is an in-app alert and does not contact emergency services. Driving safety and crash detection need native phone capabilities and are not provided by this web page.
+Run `supabase/maps.sql` once in the Supabase SQL Editor. Open **Maps** from the app menu to add shared places, see opt-in family locations, send a circle check-in or SOS, and review location activity. When someone arrives or leaves a saved place, the update appears in the circle activity and as an in-app banner for other users; if their app is backgrounded, a system notification appears when they have already allowed notifications. Location sharing is off until each person turns it on in Maps; browser location updates and arrival alerts run while the Maps page stays open and stop when you leave it. Map tiles use OpenStreetMap by default; tile requests reveal the map area being viewed. Circle SOS is an in-app alert and does not contact emergency services. Driving safety and crash detection need native phone capabilities and are not provided by this web page.
 
 Notes: the chat colour, nicknames and quick reaction are shared by all chats. Time zones still offer only Tbilisi and New York.
 
