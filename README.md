@@ -19,6 +19,8 @@ Works on desktop and phone, with live sync for everyone in the shared space.
 5. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
 6. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
 
+For an existing Supabase project that previously enabled Maps or Pet Room, run `supabase/remove-maps-and-pet.sql` to delete those features' saved data and location fields.
+
 ## 2. Run it
 Use Node.js 20.19+ or 22.12+.
 
