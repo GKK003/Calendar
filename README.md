@@ -15,11 +15,11 @@ Works on desktop and phone, with live sync for everyone in the shared space.
 1. Go to https://supabase.com, create a project.
 2. Open **SQL Editor → New query**, paste the whole content of `supabase/schema.sql`, click **Run**.
 3. Run `supabase/chat.sql`, then `supabase/three-people.sql`, in that order. The current Chat page needs both; run them before inviting a third person.
-4. Run `supabase/social.sql`, `supabase/cinema.sql`, and `supabase/games.sql` to enable profile photos, posts, Cinema, and shared games.
+4. Run `supabase/social.sql` and `supabase/games.sql` to enable profile photos, posts, and shared games.
 5. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
 6. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
 
-For an existing Supabase project that previously enabled Maps or Pet Room, run `supabase/remove-maps-and-pet.sql` to delete those features' saved data and location fields.
+For an existing Supabase project that previously enabled Maps, Pet Room, or Cinema, run `supabase/remove-retired-features.sql` to delete their saved database data. If Cinema storage was configured, delete the deployed `r2` Edge Function and the `movies` bucket in Supabase Storage; also remove its Cloudflare R2 bucket if you want its uploaded videos deleted.
 
 ## 2. Run it
 Use Node.js 20.19+ or 22.12+.
@@ -45,32 +45,7 @@ Deploy the folder to Vercel or Netlify (free):
 - In Supabase **Authentication → URL Configuration**, add your site URL.
 Then on the phone, open the site and choose **Add to Home Screen** to use it like an app.
 
-## 5. Cinema video uploads (one-time setup)
-
-Cinema stores large videos in Cloudflare R2 and keeps library metadata in Supabase. Create an R2 bucket and an R2 API token with read/write access to that bucket only. Configure the bucket's CORS policy with your deployed site origin (and `http://localhost:5173` for local development):
-
-```json
-[
-  {
-    "AllowedOrigins": ["https://YOUR-SITE.example", "http://localhost:5173"],
-    "AllowedMethods": ["PUT"],
-    "AllowedHeaders": ["Content-Type"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
-  }
-]
-```
-
-Link the Supabase project with the CLI, set the R2 credentials as Edge Function secrets, then deploy the authenticated function:
-
-```bash
-supabase secrets set R2_ACCOUNT_ID=YOUR_ACCOUNT_ID R2_ACCESS_KEY_ID=YOUR_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY=YOUR_SECRET_ACCESS_KEY R2_BUCKET=YOUR_BUCKET_NAME
-supabase functions deploy r2
-```
-
-The app requests short-lived upload and playback links from this function. Keep R2 credentials in Edge Function secrets; never put them in `.env` or a `VITE_` variable.
-
-## 6. Phone notifications and ringing calls (one-time setup)
+## 5. Phone notifications and ringing calls (one-time setup)
 What you get: Messenger-style alerts (name on top, message text under it) and, for calls, an "Incoming call" alert with sound and vibration that repeats every 5 seconds for about 30 seconds, until she answers or you hang up. A web app cannot show a real full-screen call, this is the closest it gets.
 
 Each phone: Android works in the browser or as an installed app. iPhone (iOS 16.4+) works only after **Share → Add to Home Screen**, then open the app from the home screen icon.
@@ -93,7 +68,7 @@ Each phone: Android works in the browser or as an installed app. iPhone (iOS 16.
 
 Test: lock one phone, send a message from the other. If nothing arrives, check Supabase → Edge Functions → notify → Logs.
 
-## 7. Multi-person chat
+## 6. Multi-person chat
 The Chat page shows **one group chat** (everybody) and **a private chat with each other person**, each with a profile picture, name, last message, and unread count. Up to six people can join one space. Calls stay one-to-one, from a private chat.
 
 The initial setup runs `supabase/chat.sql` and then `supabase/three-people.sql`. For an existing database, run `chat.sql` if the chat tables are missing, then run `three-people.sql` once before inviting a third person. That migration moves existing two-person messages into their private chat. Deploy `supabase/functions/notify/index.ts` to the `notify` Edge Function if you use push notifications.

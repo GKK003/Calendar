@@ -32,7 +32,6 @@ import {
   Home,
   Images,
   MessageCircle,
-  Film,
   Gamepad2,
   Menu,
   X,
@@ -62,7 +61,6 @@ import PartnerProfile from "./PartnerProfile.jsx";
 import Dashboard from "./Dashboard.jsx";
 import Gallery from "./Gallery.jsx";
 import Chat from "./Chat.jsx";
-import Cinema from "./Cinema.jsx";
 import Games from "./Games.jsx";
 import CallOverlay from "./CallOverlay.jsx";
 import useChat from "./useChat.js";
@@ -456,7 +454,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     <div className="app">
       <div
         className={
-          "shell" + (view === "chat" || view === "cinema" || view === "games" ? " chat-mode" : "")
+          "shell" + (view === "chat" || view === "games" ? " chat-mode" : "")
         }
       >
         <button
@@ -509,14 +507,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Gallery</span>
           </button>
           <button
-            className={"rail-btn" + (view === "cinema" ? " on" : "")}
-            onClick={() => setView("cinema")}
-            aria-label="Cinema"
-          >
-            <Film size={20} />
-            <span>Cinema</span>
-          </button>
-          <button
             className={"rail-btn" + (view === "games" ? " on" : "")}
             onClick={() => setView("games")}
             aria-label="Games"
@@ -558,7 +548,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </nav>
 
         <main className="main">
-          {view !== "chat" && view !== "cinema" && view !== "games" && (
+          {view !== "chat" && view !== "games" && (
             <header className="top">
               <div className="hello-row">
                 <Avatar
@@ -619,7 +609,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           {push.state === "off" &&
             !pushHidden &&
             view !== "chat" &&
-            view !== "cinema" &&
             view !== "games" && (
               <div className="push-banner">
                 <span>
@@ -652,8 +641,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               memberById={memberById}
               colorOf={colorOf}
             />
-          ) : view === "cinema" ? (
-            <Cinema space={space} userId={member.user_id} />
           ) : view === "games" ? (
             <Games space={space} member={member} members={members} />
           ) : view === "today" ? (
@@ -958,7 +945,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       {view !== "gallery" &&
         view !== "profile" &&
         view !== "chat" &&
-        view !== "cinema" &&
         view !== "games" && (
           <button
             className="fab"

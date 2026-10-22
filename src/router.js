@@ -6,7 +6,6 @@ export const PATHS = {
   month: '/month',
   year: '/year',
   gallery: '/gallery',
-  cinema: '/cinema',
   games: '/games',
   chat: '/chat',
   profile: '/profile',
