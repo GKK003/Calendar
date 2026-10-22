@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   addMonths,
@@ -28,14 +28,12 @@ import {
   Trash2,
   User,
   MapPin,
-  Map,
   Sparkles,
   Home,
   Images,
   MessageCircle,
   Film,
   Gamepad2,
-  PawPrint,
   Menu,
   X,
 } from "lucide-react";
@@ -66,7 +64,6 @@ import Gallery from "./Gallery.jsx";
 import Chat from "./Chat.jsx";
 import Cinema from "./Cinema.jsx";
 import Games from "./Games.jsx";
-import PetRoom from "./PetRoom.jsx";
 import CallOverlay from "./CallOverlay.jsx";
 import useChat from "./useChat.js";
 import { useView } from "./router.js";
@@ -74,8 +71,6 @@ import useCall from "./useCall.js";
 import usePush from "./usePush.js";
 import usePosts from "./usePosts.js";
 import "./special.css";
-
-const Maps = lazy(() => import("./Maps.jsx"));
 
 export default function Calendar({ session, member, space, onProfileChange }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -90,8 +85,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(null); // { initial, editing }
   const [copied, setCopied] = useState(false);
-  const [mapAlert, setMapAlert] = useState(null);
-  const mapAlertTimer = useRef(null);
   const postsApi = usePosts(space, member.user_id);
   const { markSeen } = postsApi;
 
@@ -204,61 +197,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     () => localStorage.getItem("push-banner-hidden") === "1",
   );
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("map-arrivals-" + space.id)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "family_alerts",
-          filter: `space_id=eq.${space.id}`,
-        },
-        ({ new: alert }) => {
-          if (
-            !alert ||
-            alert.user_id === member.user_id ||
-            !["place_enter", "place_exit"].includes(alert.kind)
-          ) return;
-
-          if (document.visibilityState !== "visible" && push.state === "on" && typeof Notification !== "undefined" && Notification.permission === "granted") {
-            const title = alert.kind === "place_enter" ? "Place arrival" : "Place update";
-            const options = {
-              body: alert.message,
-              tag: `map-alert-${alert.id}`,
-              icon: "/icon-192.png",
-              data: { view: "maps" },
-            };
-            if (navigator.serviceWorker) {
-              navigator.serviceWorker.getRegistration()
-                .then((registration) => registration ? registration.showNotification(title, options) : new Notification(title, options))
-                .catch(() => {});
-            } else {
-              try { new Notification(title, options); } catch { /* ignore unsupported notification contexts */ }
-            }
-            return;
-          }
-
-          setMapAlert(alert);
-          clearTimeout(mapAlertTimer.current);
-          mapAlertTimer.current = setTimeout(() => setMapAlert(null), 9000);
-        },
-      )
-      .subscribe();
-
-    return () => {
-      clearTimeout(mapAlertTimer.current);
-      supabase.removeChannel(channel);
-    };
-  }, [space.id, member.user_id, push.state]);
-
   // opening the app from a notification goes straight to the chat
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    if (q.get("open") === "chat" || q.get("open") === "maps") {
-      setView(q.get("open"));
-      if (q.get("open") === "chat" && q.get("chat")) chat.openChat(q.get("chat"));
+    if (q.get("open") === "chat") {
+      setView("chat");
+      if (q.get("chat")) chat.openChat(q.get("chat"));
       history.replaceState(null, "", location.pathname);
     }
     const onMsg = (e) => {
@@ -512,7 +456,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     <div className="app">
       <div
         className={
-          "shell" + (view === "chat" || view === "cinema" || view === "games" || view === "pet" ? " chat-mode" : "")
+          "shell" + (view === "chat" || view === "cinema" || view === "games" ? " chat-mode" : "")
         }
       >
         <button
@@ -539,14 +483,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               {postsApi.unread && view !== "today" && <i className="dot" />}
             </span>
             <span>Today</span>
-          </button>
-          <button
-            className={"rail-btn" + (view === "maps" ? " on" : "")}
-            onClick={() => setView("maps")}
-            aria-label="Maps"
-          >
-            <Map size={20} />
-            <span>Maps</span>
           </button>
           <button
             className={"rail-btn" + (view === "month" ? " on" : "")}
@@ -589,14 +525,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Games</span>
           </button>
           <button
-            className={"rail-btn" + (view === "pet" ? " on" : "")}
-            onClick={() => setView("pet")}
-            aria-label="Pet room"
-          >
-            <PawPrint size={20} />
-            <span>Pet Room</span>
-          </button>
-          <button
             className={"rail-btn" + (view === "chat" ? " on" : "")}
             onClick={() => {
               chat.closeChat();
@@ -630,28 +558,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         </nav>
 
         <main className="main">
-          {mapAlert && view !== "maps" && (
-            <div className="map-arrival-toast" role="status">
-              <span className="map-arrival-icon"><MapPin size={18} /></span>
-              <span className="map-arrival-copy">
-                <strong>{mapAlert.kind === "place_enter" ? "Place arrival" : "Place update"}</strong>
-                <small>{mapAlert.message}</small>
-              </span>
-              <button
-                className="map-arrival-open"
-                onClick={() => {
-                  setMapAlert(null);
-                  setView("maps");
-                }}
-              >
-                Open map
-              </button>
-              <button className="map-arrival-close" onClick={() => setMapAlert(null)} aria-label="Dismiss place update">
-                <X size={16} />
-              </button>
-            </div>
-          )}
-          {view !== "chat" && view !== "cinema" && view !== "games" && view !== "pet" && (
+          {view !== "chat" && view !== "cinema" && view !== "games" && (
             <header className="top">
               <div className="hello-row">
                 <Avatar
@@ -713,8 +620,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             !pushHidden &&
             view !== "chat" &&
             view !== "cinema" &&
-            view !== "games" &&
-            view !== "pet" && (
+            view !== "games" && (
               <div className="push-banner">
                 <span>
                   Get notified about messages and calls, even when the app is
@@ -750,8 +656,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <Cinema space={space} userId={member.user_id} />
           ) : view === "games" ? (
             <Games space={space} member={member} members={members} />
-          ) : view === "pet" ? (
-            <PetRoom space={space} member={member} members={members} />
           ) : view === "today" ? (
             <Dashboard
               me={me}
@@ -764,16 +668,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               onNewEvent={() => openNew(ymd(new Date()))}
               onOpenCalendar={() => setView("month")}
             />
-          ) : view === "maps" ? (
-            <Suspense fallback={<div className="center muted">Loading map…</div>}>
-              <Maps
-                space={space}
-                me={me}
-                members={members}
-                events={localEvents}
-                colorOf={colorOf}
-              />
-            </Suspense>
           ) : view === "gallery" ? (
             <Gallery
               shots={postsApi.gallery}

@@ -16,10 +16,8 @@ Works on desktop and phone, with live sync for everyone in the shared space.
 2. Open **SQL Editor → New query**, paste the whole content of `supabase/schema.sql`, click **Run**.
 3. Run `supabase/chat.sql`, then `supabase/three-people.sql`, in that order. The current Chat page needs both; run them before inviting a third person.
 4. Run `supabase/social.sql`, `supabase/cinema.sql`, and `supabase/games.sql` to enable profile photos, posts, Cinema, and shared games.
-5. Run `supabase/pet.sql` to enable the shared virtual pet, room, care progress, and furniture collection. Pets, room styles, and decor are all free. Existing projects need to run this once before opening Pet Room.
-6. Run `supabase/maps.sql` to enable shared places, opt-in live location sharing, location history, and circle alerts for Maps.
-7. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
-8. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
+5. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
+6. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
 
 ## 2. Run it
 Use Node.js 20.19+ or 22.12+.
@@ -97,10 +95,6 @@ Test: lock one phone, send a message from the other. If nothing arrives, check S
 The Chat page shows **one group chat** (everybody) and **a private chat with each other person**, each with a profile picture, name, last message, and unread count. Up to six people can join one space. Calls stay one-to-one, from a private chat.
 
 The initial setup runs `supabase/chat.sql` and then `supabase/three-people.sql`. For an existing database, run `chat.sql` if the chat tables are missing, then run `three-people.sql` once before inviting a third person. That migration moves existing two-person messages into their private chat. Deploy `supabase/functions/notify/index.ts` to the `notify` Edge Function if you use push notifications.
-
-## Maps and shared locations
-
-Run `supabase/maps.sql` once in the Supabase SQL Editor. Open **Maps** from the app menu to add shared places, see opt-in family locations, send a circle check-in or SOS, and review location activity. When someone arrives or leaves a saved place, the update appears in the circle activity and as an in-app banner for other users; if their app is backgrounded, a system notification appears when they have already allowed notifications. Location sharing is off until each person turns it on in Maps; browser location updates and arrival alerts run while the Maps page stays open and stop when you leave it. Map tiles use OpenStreetMap by default; tile requests reveal the map area being viewed. Circle SOS is an in-app alert and does not contact emergency services. Driving safety and crash detection need native phone capabilities and are not provided by this web page.
 
 Notes: the chat colour, nicknames and quick reaction are shared by all chats. Time zones still offer only Tbilisi and New York.
 
