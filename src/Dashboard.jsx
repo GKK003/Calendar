@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { format, parseISO } from 'date-fns'
-import { CalendarDays, MapPin, MessageCircle, Plus, Sparkles } from 'lucide-react'
+import { CalendarDays, Clock3, MapPin, MessageCircle, Plus, Sparkles } from 'lucide-react'
 import './dashboard.css'
 import './gallery.css'
 import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { Composer, PostCard } from './Posts.jsx'
-import { TYPES, ZONES, clockIn, greeting, mapHref, sortEvents, timeLabel, ymd, zoneOfCity } from './lib.js'
+import { TYPES, ZONES, clockIn, dateInZone, greeting, mapHref, sortEvents, timeLabel, zoneOfCity } from './lib.js'
 
 function ZoneClock({ zone }) {
   const [now, setNow] = useState(new Date())
@@ -69,27 +69,48 @@ export default function Dashboard({
   onOpenCalendar,
 }) {
   const [zoom, setZoom] = useState(null)
-  const [, tick] = useState(0)
-  const today = ymd(new Date())
+  const [now, setNow] = useState(() => new Date())
+  const zone = zoneOfCity(me.city)
+  const today = dateInZone(zone, now)
+  const nowClock = clockIn(zone, now)
+  const todayLabel = new Intl.DateTimeFormat(undefined, {
+    timeZone: zone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  }).format(now)
 
-  // A new day starts at 00:00: re-render then (and when the phone wakes up) so yesterday's posts disappear
+  // Keep upcoming events and the two-hour deadline list current while the page is open.
   useEffect(() => {
-    const n = new Date()
-    const next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 1)
-    const t = setTimeout(() => tick((x) => x + 1), next - n)
-    const wake = () => document.visibilityState === 'visible' && tick((x) => x + 1)
+    const t = setInterval(() => setNow(new Date()), 30_000)
+    const wake = () => document.visibilityState === 'visible' && setNow(new Date())
     document.addEventListener('visibilitychange', wake)
     return () => {
-      clearTimeout(t)
+      clearInterval(t)
       document.removeEventListener('visibilitychange', wake)
     }
-  }, [today])
+  }, [])
 
-  const todays = events.filter((e) => e.date === today)
+  const todays = events.filter((e) => e.date === today && (!e.start_time || `${e.start_time.slice(0, 5)}:00` > nowClock))
   const mine = sortEvents(todays.filter((e) => e.user_id === me.user_id))
   const specialToday = todays.filter((e) => e.type === 'special')
+  const nowParts = nowClock.split(':').map(Number)
+  const nowSeconds = nowParts[0] * 3600 + nowParts[1] * 60 + nowParts[2]
+  const deadlines = todays
+    .filter((e) => e.start_time)
+    .map((e) => {
+      const [hours, minutes] = e.start_time.slice(0, 5).split(':').map(Number)
+      return { event: e, secondsUntil: hours * 3600 + minutes * 60 - nowSeconds }
+    })
+    .filter((item) => item.secondsUntil > 0 && item.secondsUntil <= 2 * 60 * 60)
+    .sort((a, b) => a.secondsUntil - b.secondsUntil)
 
-  const todayPosts = api.posts.filter((p) => ymd(new Date(p.created_at)) === today)
+  function startsIn(seconds) {
+    const minutes = Math.ceil(seconds / 60)
+    if (minutes < 60) return `Starts in ${minutes} min`
+    const hours = Math.floor(minutes / 60)
+    const remainder = minutes % 60
+    return `Starts in ${hours} hr${remainder ? ` ${remainder} min` : ''}`
+  }
+
+  const todayPosts = api.posts.filter((p) => dateInZone(zone, new Date(p.created_at)) === today)
   const byPost = {}
   for (const r of api.replies) (byPost[r.post_id] ||= []).push(r)
 
@@ -107,7 +128,7 @@ export default function Dashboard({
             {greeting()}, {me.display_name}
           </h1>
           <p className="muted">
-            {format(new Date(), 'EEEE, d MMMM yyyy')} · {todays.length === 0 ? 'Nothing planned today' : `${todays.length} ${todays.length === 1 ? 'event' : 'events'} today`}
+            {todayLabel} · {todays.length === 0 ? 'Nothing left today' : `${todays.length} upcoming ${todays.length === 1 ? 'event' : 'events'} today`}
           </p>
           <div className="dhero-actions">
             <button className="btn primary sm" onClick={() => onNewEvent()}>
@@ -136,6 +157,29 @@ export default function Dashboard({
           <strong>Today is special:</strong> {specialToday.map((e) => e.title).join(', ')}
         </section>
       )}
+
+      <section className="card ddeadlines">
+        <div className="ddeadline-head">
+          <span className="ddeadline-icon"><Clock3 size={18} /></span>
+          <div>
+            <h2>Deadlines</h2>
+            <small>Events starting within the next 2 hours</small>
+          </div>
+          <span className="ddeadline-count">{deadlines.length}</span>
+        </div>
+        {deadlines.length === 0 ? (
+          <p className="empty">No events starting in the next 2 hours.</p>
+        ) : (
+          <div className="ddeadline-list">
+            {deadlines.map(({ event: e, secondsUntil }) => (
+              <div className="ddeadline-row" key={e.id}>
+                <EventRow e={e} owner={memberById[e.user_id]} color={colorOf(e.user_id)} onOpen={onOpenEvent} />
+                <small>{startsIn(secondsUntil)}</small>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="dpanels">
         <section className="card dpanel dme">

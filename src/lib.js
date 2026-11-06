@@ -54,6 +54,14 @@ export function clockIn(tz, date = new Date()) {
   return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date)
 }
 
+export function dateInZone(tz, date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date)
+  const get = (type) => parts.find((part) => part.type === type).value
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
 function tzOffset(tz, ts) {
   const p = new Intl.DateTimeFormat('en-US', {
     timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',

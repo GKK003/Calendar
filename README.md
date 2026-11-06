@@ -83,6 +83,6 @@ The initial setup runs `supabase/games.sql`. If adding Games to an older setup, 
 2. Install dependencies with `npm install`, then run `npm run dev`.
 3. Sign in with two accounts joined to the same shared space, open **Games**, and select English Wordle, Georgian Wordle, or Sudoku. Both people use the same board for the selected game; moves are stored in Supabase and broadcast with Realtime.
 
-To enable the separate Georgian Wordle board on an existing Supabase setup, run `supabase/georgian-wordle.sql` in the SQL Editor once. It adds `wordle-ka` to the allowed game types; the existing English Wordle state and history stay in their own row.
+ქართული Wordle-ის ჩასართავად გაუშვით `supabase/georgian-wordle.sql` Supabase SQL Editor-ში.
 
 The game table is protected by row-level security so signed-in users can access only their own shared space. Wordle's answer is currently part of the shared game state, so this is intended for casual cooperative play rather than cheat-resistant competitive play. For competitive play, move answer selection and guess scoring into a server-side database function or trusted backend.
