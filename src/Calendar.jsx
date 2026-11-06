@@ -19,7 +19,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Copy,
   LayoutGrid,
   LogOut,
   Plus,
@@ -33,6 +32,7 @@ import {
   Images,
   MessageCircle,
   Gamepad2,
+  UsersRound,
   Menu,
   X,
 } from "lucide-react";
@@ -59,6 +59,7 @@ import Profile from "./Profile.jsx";
 import Avatar from "./Avatar.jsx";
 import PartnerProfile from "./PartnerProfile.jsx";
 import Dashboard from "./Dashboard.jsx";
+import CirclePage from "./CirclePage.jsx";
 import Gallery from "./Gallery.jsx";
 import Chat from "./Chat.jsx";
 import Games from "./Games.jsx";
@@ -82,7 +83,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const [who, setWho] = useState("all");
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(null); // { initial, editing }
-  const [copied, setCopied] = useState(false);
   const postsApi = usePosts(space, member.user_id);
   const { markSeen } = postsApi;
 
@@ -442,12 +442,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     load();
   }
 
-  function copyCode() {
-    navigator.clipboard?.writeText(space.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
   const dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
@@ -457,17 +451,22 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           "shell" + (view === "chat" || view === "games" ? " chat-mode" : "")
         }
       >
-        <button
-          type="button"
-          className={`brutal-menu-trigger${menuOpen ? " is-open" : ""}`}
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-expanded={menuOpen}
-          aria-controls="main-navigation"
-        >
-          <span className="brutal-menu-trigger-icon">{menuOpen ? <X size={23} strokeWidth={2.5} /> : <Menu size={23} strokeWidth={2.5} />}</span>
-          <span className="brutal-menu-trigger-label">MENU</span>
-        </button>
+        <div className="menu-controls">
+          <button
+            type="button"
+            className={`brutal-menu-trigger${menuOpen ? " is-open" : ""}`}
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={menuOpen}
+            aria-controls="main-navigation"
+          >
+            <span className="brutal-menu-trigger-icon">{menuOpen ? <X size={23} strokeWidth={2.5} /> : <Menu size={23} strokeWidth={2.5} />}</span>
+            <span className="brutal-menu-trigger-label">MENU</span>
+          </button>
+          {view === "today" && !menuOpen && (
+            <div className="today-menu-clocks"><Clocks compact tz={tz} /></div>
+          )}
+        </div>
         {menuOpen && <button className="brutal-menu-scrim" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}
         <nav id="main-navigation" className={`rail${menuOpen ? " menu-open" : ""}`} onClick={() => setMenuOpen(false)} aria-label="Main navigation">
           <div className="logo">S</div>
@@ -536,6 +535,14 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <User size={20} />
             <span>Profile</span>
           </button>
+          <button
+            className={"rail-btn" + (view === "circle" ? " on" : "")}
+            onClick={() => setView("circle")}
+            aria-label="Circle"
+          >
+            <UsersRound size={20} />
+            <span>Circle</span>
+          </button>
 
           <button
             className="rail-btn"
@@ -547,32 +554,28 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           </button>
         </nav>
 
-        <main className="main">
-          {view !== "chat" && view !== "games" && (
+        <main className={"main" + (view === "today" ? " today-main" : view === "circle" ? " circle-main" : "")}>
+          {view !== "chat" && view !== "games" && view !== "today" && view !== "circle" && (
             <header className="top">
-              <div className="hello-row">
-                <Avatar
-                  url={me.avatar_url}
-                  name={me.display_name}
-                  color={colorOf(member.user_id)}
-                  size="md"
-                />
-                <div>
-                  <h1 className="hello">
-                    {greeting()}, {member.display_name}
-                  </h1>
-                  <p className="muted">
+              {view !== "month" && (
+                <div className="hello-row">
+                  <Avatar
+                    url={me.avatar_url}
+                    name={me.display_name}
+                    color={colorOf(member.user_id)}
+                    size="md"
+                  />
+                  <div>
+                    <h1 className="hello">
+                      {greeting()}, {member.display_name}
+                    </h1>
                     {others.length > 0 && (
-                      <>
+                      <p className="muted">
                         Shared with{" "}
                         {others.map((o, i) => (
                           <span key={o.user_id}>
-                            {i > 0 &&
-                              (i === others.length - 1 ? " and " : ", ")}
-                            <button
-                              className="linklike"
-                              onClick={() => openPerson(o.user_id)}
-                            >
+                            {i > 0 && (i === others.length - 1 ? " and " : ", ")}
+                            <button className="linklike" onClick={() => openPerson(o.user_id)}>
                               {o.display_name}
                             </button>
                           </span>
@@ -580,16 +583,11 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         {others.length === 1 && others[0].about && (
                           <span className="status"> · {others[0].about}</span>
                         )}
-                        {" · "}
-                      </>
+                      </p>
                     )}
-                    Invite code:{" "}
-                    <button className="code" onClick={copyCode}>
-                      {space.code} <Copy size={12} /> {copied && "Copied"}
-                    </button>
-                  </p>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="top-right">
                 <Clocks tz={tz} />
                 {(view === "month" || view === "year") && (
@@ -609,7 +607,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           {push.state === "off" &&
             !pushHidden &&
             view !== "chat" &&
-            view !== "games" && (
+            view !== "games" &&
+            view !== "circle" && (
               <div className="push-banner">
                 <span>
                   Get notified about messages and calls, even when the app is
@@ -643,6 +642,18 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             />
           ) : view === "games" ? (
             <Games space={space} member={member} members={members} />
+          ) : view === "circle" ? (
+            <CirclePage
+              space={space}
+              me={me}
+              members={members}
+              colorOf={colorOf}
+              onEditProfile={() => {
+                setProfileTab("me");
+                setView("profile");
+              }}
+              onOpenPerson={openPerson}
+            />
           ) : view === "today" ? (
             <Dashboard
               me={me}
@@ -945,7 +956,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
       {view !== "gallery" &&
         view !== "profile" &&
         view !== "chat" &&
-        view !== "games" && (
+        view !== "games" &&
+        view !== "circle" && (
           <button
             className="fab"
             onClick={() =>

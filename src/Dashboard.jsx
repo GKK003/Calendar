@@ -6,23 +6,7 @@ import './gallery.css'
 import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { Composer, PostCard } from './Posts.jsx'
-import { TYPES, ZONES, clockIn, dateInZone, greeting, mapHref, sortEvents, timeLabel, zoneOfCity } from './lib.js'
-
-function ZoneClock({ zone }) {
-  const [now, setNow] = useState(new Date())
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
-  return (
-    <div className="dclock">
-      <div>
-        <small>{zone.label}</small>
-        <b>{clockIn(zone.id, now).slice(0, 5)}</b>
-      </div>
-    </div>
-  )
-}
+import { TYPES, dateInZone, mapHref, sortEvents, timeLabel, zoneOfCity } from './lib.js'
 
 function EventRow({ e, owner, color, showDate, onOpen }) {
   const special = e.type === 'special'
@@ -124,9 +108,7 @@ export default function Dashboard({
     <div className="dash">
       <section className="card dhero">
         <div className="dhero-text">
-          <h1>
-            {greeting()}, {me.display_name}
-          </h1>
+          <h1>Your day</h1>
           <p className="muted">
             {todayLabel} · {todays.length === 0 ? 'Nothing left today' : `${todays.length} upcoming ${todays.length === 1 ? 'event' : 'events'} today`}
           </p>
@@ -141,13 +123,6 @@ export default function Dashboard({
               <CalendarDays size={16} /> Calendar
             </button>
           </div>
-        </div>
-        <div className="dclocks">
-          {[...ZONES]
-            .sort((a, z) => (z.id === zoneOfCity(me.city)) - (a.id === zoneOfCity(me.city)))
-            .map((z) => (
-              <ZoneClock key={z.id} zone={z} />
-            ))}
         </div>
       </section>
 

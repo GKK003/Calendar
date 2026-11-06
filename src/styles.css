@@ -325,6 +325,10 @@ label.check {
   flex-direction: column;
   gap: 16px;
 }
+.main.today-main,
+.main.circle-main {
+  padding-top: 72px;
+}
 .top {
   display: flex;
   justify-content: space-between;
@@ -1197,11 +1201,19 @@ label.check {
 }
 
 /* BRUTAL MENU — replaces the bottom tab bar with a bold, editorial drawer */
-.brutal-menu-trigger {
+.menu-controls {
   position: fixed;
   z-index: 102;
   top: 10px;
   left: 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 44px);
+}
+.brutal-menu-trigger {
+  position: relative;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1221,6 +1233,27 @@ label.check {
     transform 0.18s ease,
     box-shadow 0.18s ease,
     background 0.18s ease;
+}
+.today-menu-clocks {
+  min-width: 0;
+  flex: 1;
+}
+.today-menu-clocks .clocks {
+  gap: 6px;
+}
+.today-menu-clocks .clocks.compact .clock {
+  min-width: 0;
+  padding: 5px 7px;
+  border-radius: 9px;
+}
+.today-menu-clocks .clocks.compact .clock span {
+  font-size: 9px;
+  white-space: nowrap;
+}
+.today-menu-clocks .clocks.compact .clock b {
+  font-size: 12px;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 .brutal-menu-trigger:hover {
   transform: translate(-2px, -2px);
@@ -1389,9 +1422,13 @@ label.check {
   .main {
     padding-top: 48px;
   }
-  .brutal-menu-trigger {
+  .menu-controls {
     top: 14px;
     left: 14px;
+    gap: 8px;
+    max-width: calc(100vw - 28px);
+  }
+  .brutal-menu-trigger {
     min-height: 46px;
     padding: 6px 12px 6px 6px;
   }
@@ -1445,8 +1482,10 @@ label.check {
   }
 }
 @media (max-height: 520px) {
-  .brutal-menu-trigger {
+  .menu-controls {
     top: 8px;
+  }
+  .brutal-menu-trigger {
     min-height: 38px;
     padding: 3px 9px 3px 3px;
   }

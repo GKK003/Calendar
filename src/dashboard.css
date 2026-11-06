@@ -25,31 +25,6 @@
   gap: 8px;
   margin-top: 16px;
 }
-.dclocks {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.dclock {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 14px 18px;
-}
-.dclock small {
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-}
-.dclock b {
-  font-size: 32px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
 .dspecial {
   display: flex;
   align-items: center;
@@ -338,9 +313,6 @@
     padding: 20px;
   }
   .dhero h1 {
-    font-size: 26px;
-  }
-  .dclock b {
     font-size: 26px;
   }
 }
