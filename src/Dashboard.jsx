@@ -6,7 +6,7 @@ import './gallery.css'
 import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { Composer, PostCard } from './Posts.jsx'
-import { TYPES, dateInZone, mapHref, sortEvents, timeLabel, zoneOfCity } from './lib.js'
+import { TYPES, clockIn, dateInZone, mapHref, sortEvents, timeLabel, zoneOfCity } from './lib.js'
 
 function EventRow({ e, owner, color, showDate, onOpen }) {
   const special = e.type === 'special'
