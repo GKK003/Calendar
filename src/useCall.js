@@ -20,7 +20,7 @@ const IDLE = { status: 'idle', video: false, incoming: false, startedAt: 0, peer
 
 // One-to-one voice and video calls (WebRTC; the signals go through Supabase Realtime).
 // Every signal says who it is from and who it is for, so three or more people can share the app.
-export default function useCall({ space, userId, calls }) {
+export default function useCall({ space, userId, calls, latestIncomingCall, recentCallsMayBeMissing, recentMessagesLoadedAt }) {
   const [call, setCall] = useState(IDLE)
   const [local, setLocal] = useState(null)
   const [remote, setRemote] = useState(null)
@@ -34,13 +34,16 @@ export default function useCall({ space, userId, calls }) {
   const ice = useRef([])
   const ringTimer = useRef(null)
   const rowId = useRef(null) // promise of the chat row that stands for this call
+  const [visibleAt, setVisibleAt] = useState(0)
+  const lastRecovery = useRef(null)
+  const recoveredCall = useRef(null)
   const logRef = useRef(calls)
   logRef.current = calls
 
-  const put = (next) => {
+  const put = useCallback((next) => {
     st.current = { ...st.current, ...next }
     setCall(st.current)
-  }
+  }, [])
 
   const send = (type, data = {}) =>
     chan.current?.send({ type: 'broadcast', event: 'sig', payload: { from: userId, to: st.current.peerId, type, ...data } })
@@ -213,30 +216,51 @@ export default function useCall({ space, userId, calls }) {
     // eslint-disable-next-line
   }, [space.id, userId])
 
-  // opened from a "calling" notification: if she is still ringing, show the call
   useEffect(() => {
-    async function checkPending() {
-      if (document.hidden || st.current.status !== 'idle') return
-      const since = new Date(Date.now() - 40000).toISOString()
-      const { data } = await supabase
-        .from('messages')
-        .select('id, user_id, meta')
-        .eq('kind', 'call')
-        .eq('to_user', userId)
-        .neq('user_id', userId)
-        .gte('created_at', since)
-        .order('created_at', { ascending: false })
-        .limit(1)
-      const m = data?.[0]
-      if (m && m.meta?.status === 'ringing' && st.current.status === 'idle') {
-        put({ status: 'ringing', video: !!m.meta.video, incoming: true, startedAt: 0, peerId: m.user_id })
-      }
+    const wake = () => {
+      if (!document.hidden) setVisibleAt(Date.now())
     }
-    checkPending()
-    document.addEventListener('visibilitychange', checkPending)
-    return () => document.removeEventListener('visibilitychange', checkPending)
-    // eslint-disable-next-line
-  }, [space.id, userId])
+    document.addEventListener('visibilitychange', wake)
+    return () => document.removeEventListener('visibilitychange', wake)
+  }, [])
+
+  // Recover a still-ringing call when opening or returning to the app. The
+  // chat summary already fetched these messages unless its recent window filled up.
+  useEffect(() => {
+    if (document.hidden || !recentMessagesLoadedAt || recentMessagesLoadedAt < visibleAt || lastRecovery.current === visibleAt) return
+    const since = Date.now() - 40_000
+
+    function restore(message) {
+      if (document.hidden || !message || message.id === recoveredCall.current || message.meta?.status !== 'ringing') return
+      if (Date.parse(message.created_at) < since) return
+      if (st.current.status !== 'idle') {
+        if (st.current.peerId === message.user_id) recoveredCall.current = message.id
+        return
+      }
+      recoveredCall.current = message.id
+      put({ status: 'ringing', video: !!message.meta.video, incoming: true, startedAt: 0, peerId: message.user_id })
+    }
+
+    if (!recentCallsMayBeMissing || latestIncomingCall) {
+      lastRecovery.current = visibleAt
+      restore(latestIncomingCall)
+      return
+    }
+
+    const request = new AbortController()
+    supabase.from('messages').select('id, user_id, meta, created_at')
+      .eq('space_id', space.id)
+      .eq('kind', 'call').eq('to_user', userId).neq('user_id', userId)
+      .gte('created_at', new Date(since).toISOString())
+      .order('created_at', { ascending: false }).limit(1)
+      .abortSignal(request.signal)
+      .then(({ data }) => {
+        if (request.signal.aborted) return
+        lastRecovery.current = visibleAt
+        restore(data?.[0])
+      })
+    return () => request.abort()
+  }, [latestIncomingCall, recentCallsMayBeMissing, recentMessagesLoadedAt, visibleAt, space.id, userId, put])
 
   function toggleMute() {
     const on = !muted

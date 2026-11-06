@@ -27,6 +27,7 @@ export default function App() {
   const [authError, setAuthError] = useState('')
   const [profileError, setProfileError] = useState('')
   const profileRequest = useRef(0)
+  const authUser = useRef(null)
 
   useEffect(() => {
     if (!configured) return undefined
@@ -34,14 +35,21 @@ export default function App() {
     let authChanged = false
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       authChanged = true
-      profileRequest.current += 1
+      const userId = nextSession?.user?.id ?? null
+      if (userId !== authUser.current) {
+        authUser.current = userId
+        profileRequest.current += 1
+      }
       setAuthError('')
       setSession(nextSession)
     })
     supabase.auth.getSession().then(({ data: result, error }) => {
       if (!active || authChanged) return
       if (error) setAuthError(error.message)
-      else setSession(result.session)
+      else {
+        authUser.current = result.session?.user?.id ?? null
+        setSession(result.session)
+      }
     }).catch((error) => {
       if (active && !authChanged) setAuthError(error.message || 'Could not restore your session.')
     })
@@ -59,17 +67,18 @@ export default function App() {
     setProfileError('')
     loadCalendar().catch(() => {}) // Suspense and the error boundary handle the render-time import.
     try {
-      const { data, error } = await supabase
-        .from('members').select('*, space:spaces(*)').eq('user_id', userId).maybeSingle()
+      // Row-level security exposes only the caller's space and its members.
+      const { data, error } = await supabase.from('spaces').select('id, name, code, members(*)').maybeSingle()
       if (request !== profileRequest.current) return
       if (error) throw error
       if (!data) {
         setProfile(null)
         return
       }
-      const { space, ...member } = data
-      if (!space) throw new Error('Could not load your shared space.')
-      setProfile({ member, space })
+      const { members = [], ...space } = data
+      const member = members.find((row) => row.user_id === userId)
+      if (!member) throw new Error('Could not load your calendar membership.')
+      setProfile({ member, members, space })
     } catch (error) {
       if (request !== profileRequest.current) return
       setProfileError(error.message || 'Could not load your calendar. Check your connection and try again.')
@@ -91,6 +100,7 @@ export default function App() {
     try {
       const { data, error } = await supabase.auth.getSession()
       if (error) throw error
+      authUser.current = data.session?.user?.id ?? null
       setSession(data.session)
     } catch (error) {
       setAuthError(error.message || 'Could not restore your session.')
@@ -109,12 +119,21 @@ export default function App() {
   }
   if (authError) return <StatusCard title="Can't connect" message={authError} onRetry={retryAuth} />
   if (profileError) return <StatusCard title="Couldn't load your calendar" message={profileError} onRetry={loadProfile} />
-  if (session === undefined || (session && profile === undefined)) return <div className="center muted" role="status">Loading your calendar…</div>
+  if (session === undefined || (session && (profile === undefined || (profile && profile.member.user_id !== session.user.id)))) {
+    return <div className="center muted" role="status">Loading your calendar…</div>
+  }
   if (!session) return <Auth />
   if (!profile) return <Setup onDone={loadProfile} />
   return (
     <Suspense fallback={<div className="center muted" role="status">Loading your calendar.</div>}>
-      <Calendar session={session} member={profile.member} space={profile.space} onProfileChange={loadProfile} />
+      <Calendar
+        key={`${profile.space.id}:${profile.member.user_id}`}
+        session={session}
+        member={profile.member}
+        initialMembers={profile.members}
+        space={profile.space}
+        onProfileChange={loadProfile}
+      />
     </Suspense>
   )
 }

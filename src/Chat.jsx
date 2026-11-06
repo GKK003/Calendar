@@ -657,7 +657,7 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
 function Settings_({ chat, push, me, members, memberById, onClose }) {
   const { settings } = chat
   const ids = members.map((m) => m.user_id)
-  const [nick, setNick] = useState(() => Object.fromEntries(ids.map((id) => [id, settings.nicknames?.[id] || ''])))
+  const [nick, setNick] = useState({})
   const [err, setErr] = useState('')
   const [saving, setSaving] = useState(false)
   const sheetRef = useRef(null)
@@ -717,9 +717,7 @@ function Settings_({ chat, push, me, members, memberById, onClose }) {
     }
   }
   async function done() {
-    const nicknames = {}
-    for (const id of ids) if (nick[id]?.trim()) nicknames[id] = nick[id].trim()
-    if (await save({ nicknames })) closeRef.current()
+    if (!Object.keys(nick).length || await save({ nicknames: nick })) closeRef.current()
   }
 
   return (
@@ -733,7 +731,7 @@ function Settings_({ chat, push, me, members, memberById, onClose }) {
           {ids.map((id) => (
             <label key={id} className="nick">
               <span>{id === me.user_id ? 'You' : memberById[id]?.display_name}</span>
-              <input value={nick[id]} onChange={(e) => setNick({ ...nick, [id]: e.target.value })} maxLength={30} placeholder={memberById[id]?.display_name} />
+              <input value={nick[id] ?? settings.nicknames?.[id] ?? ''} onChange={(e) => setNick({ ...nick, [id]: e.target.value })} maxLength={30} placeholder={memberById[id]?.display_name} />
             </label>
           ))}
         </div>

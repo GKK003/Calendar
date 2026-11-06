@@ -57,6 +57,7 @@ import {
 } from "./lib.js";
 import Clocks from "./Clocks.jsx";
 import Avatar from "./Avatar.jsx";
+import "./calendar-layout.css";
 import Dashboard from "./Dashboard.jsx";
 import useChat from "./useChat.js";
 import { useView } from "./router.js";
@@ -79,7 +80,7 @@ const VIEW_TITLES = {
   games: "Games", circle: "Circle", chat: "Chat", profile: "Profile",
 };
 
-export default function Calendar({ session, member, space, onProfileChange }) {
+export default function Calendar({ session, member, initialMembers, space, onProfileChange }) {
   const initialZone = zoneOfCity(member.city);
   const initialDate = dateInZone(initialZone);
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -88,61 +89,88 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const [selected, setSelected] = useState(initialDate);
   const [view, setView] = useView();
   const [profileTab, setProfileTab] = useState("me");
-  const [events, setEvents] = useState([]);
-  const [members, setMembers] = useState([member]);
-  const [eventsLoading, setEventsLoading] = useState(true);
-  const [eventsError, setEventsError] = useState("");
+  const [eventResult, setEventResult] = useState({ range: "", rows: [], error: "" });
+  const [members, setMembers] = useState(initialMembers);
   const [membersError, setMembersError] = useState("");
   const [types, setTypes] = useState(new Set(Object.keys(TYPES)));
   const [who, setWho] = useState("all");
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(null); // { initial, editing }
 
+  const memberById = useMemo(
+    () => Object.fromEntries(members.map((m) => [m.user_id, m])),
+    [members],
+  );
+  const me = memberById[member.user_id] || member;
+  const tz = zoneOfCity(me.city);
+  const todayKey = dateInZone(tz, currentDate);
+  const showCalendar = view === "month" || view === "year";
   const year = cursor.getFullYear();
+  const todayDate = view === "today" ? parseISO(todayKey) : null;
+  // Include yesterday's overnight events and dates that cross midnight when converted.
+  const from = todayDate ? ymd(addDays(todayDate, -2)) : showCalendar ? `${year - 1}-12-01` : "";
+  const to = todayDate ? ymd(addDays(todayDate, 1)) : showCalendar ? `${year + 1}-01-31` : "";
+  const eventRange = from ? `${from}/${to}` : "";
+  const eventsPending = Boolean(eventRange && eventResult.range !== eventRange);
+  const eventsError = !eventsPending && eventRange ? eventResult.error : "";
 
   const membersSeq = useRef(0);
+  const membersUpdatedAt = useRef(Date.now());
+  useEffect(() => {
+    membersSeq.current += 1;
+    membersUpdatedAt.current = Date.now();
+    setMembers(initialMembers);
+    setMembersError("");
+  }, [initialMembers]);
+
   const loadMembers = useCallback(async () => {
     const id = ++membersSeq.current;
     try {
-      const { data, error } = await supabase.from("members").select("*");
+      const { data, error } = await supabase.from("members").select("*").eq("space_id", space.id);
       if (id !== membersSeq.current) return;
       if (error) throw error;
+      membersUpdatedAt.current = Date.now();
       setMembers(data || []);
       setMembersError("");
     } catch (error) {
       if (id === membersSeq.current) setMembersError(error.message || "Could not load calendar members.");
     }
-  }, []);
+  }, [space.id]);
 
   const seq = useRef(0);
   const load = useCallback(async () => {
+    if (!eventRange) return;
     const id = ++seq.current;
-    setEventsLoading(true);
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("*")
-        .gte("date", `${year - 1}-12-01`)
-        .lte("date", `${year + 1}-01-31`)
+        .select("id, user_id, date, title, type, tz, start_time, end_time, note, place, series_id")
+        .eq("space_id", space.id)
+        .gte("date", from)
+        .lte("date", to)
         .order("start_time", { ascending: true });
       if (id !== seq.current) return;
       if (error) throw error;
-      setEvents(data || []);
-      setEventsError("");
+      setEventResult({ range: eventRange, rows: data || [], error: "" });
     } catch (error) {
-      if (id === seq.current) setEventsError(error.message || "Could not load events.");
-    } finally {
-      if (id === seq.current) setEventsLoading(false);
+      if (id === seq.current) {
+        setEventResult((current) => ({
+          range: eventRange,
+          rows: current.range === eventRange ? current.rows : [],
+          error: error.message || "Could not load events.",
+        }));
+      }
     }
-  }, [year]);
+  }, [eventRange, from, to, space.id]);
 
+  const loadEventsRef = useRef(load);
   useEffect(() => {
+    loadEventsRef.current = load;
     load();
     return () => { seq.current += 1; };
   }, [load]);
 
   useEffect(() => {
-    loadMembers();
     const ch = supabase
       .channel("events-" + space.id)
       .on(
@@ -153,7 +181,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           table: "events",
           filter: `space_id=eq.${space.id}`,
         },
-        load,
+        () => loadEventsRef.current(),
       )
       .on(
         "postgres_changes",
@@ -166,19 +194,17 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         loadMembers,
       )
       .subscribe();
-    const wake = () => document.visibilityState === "visible" && loadMembers();
+    const wake = () => {
+      if (document.hidden) return;
+      if (Date.now() - membersUpdatedAt.current >= 15_000) loadMembers();
+    };
     document.addEventListener("visibilitychange", wake);
     return () => {
       document.removeEventListener("visibilitychange", wake);
       membersSeq.current += 1;
       supabase.removeChannel(ch);
     };
-  }, [space.id, load, loadMembers]);
-
-  const memberById = useMemo(
-    () => Object.fromEntries(members.map((m) => [m.user_id, m])),
-    [members],
-  );
+  }, [space.id, loadMembers]);
   const colorOf = (id) => {
     const m = members.find((x) => x.user_id === id);
     if (m && PALETTE.includes(m.color)) return m.color;
@@ -204,26 +230,30 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     setView("profile");
   }
   async function profileSaved() {
-    await loadMembers();
     await onProfileChange?.();
   }
-  const me = memberById[member.user_id] || member;
   const others = useMemo(
     () => members.filter((m) => m.user_id !== member.user_id),
     [members, member.user_id],
   );
   const profileOf = others.find((m) => m.user_id === profileTab);
-  const tz = zoneOfCity(me.city);
-  const todayKey = dateInZone(tz, currentDate);
   const postsApi = usePosts(space, member.user_id, view === "gallery", view === "today" ? todayKey : null, tz);
   const { markSeen } = postsApi;
   const previousToday = useRef(initialDate);
-  const chat = useChat(space, member.user_id, members);
+  const chat = useChat(space, member.user_id, members, view === "chat");
   const callApi = useCall({
     space,
     userId: member.user_id,
     calls: { begin: chat.beginCall, finish: chat.finishCall },
+    latestIncomingCall: chat.latestIncomingCall,
+    recentCallsMayBeMissing: chat.recentCallsMayBeMissing,
+    recentMessagesLoadedAt: chat.recentMessagesLoadedAt,
   });
+  const callActive = callApi.call.status !== "idle";
+  const { loadSettings } = chat;
+  useEffect(() => {
+    if (callActive) loadSettings();
+  }, [callActive, loadSettings]);
   const callPeer = callApi.call.peerId ? memberById[callApi.call.peerId] : null;
   const push = usePush(space, member.user_id);
   const [pushHidden, setPushHidden] = useState(
@@ -272,15 +302,15 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   }, []);
 
   const localEvents = useMemo(
-    () => events.map((e) => localizeEvent(e, tz)),
-    [events, tz],
+    () => from ? eventResult.rows.filter((event) => event.date >= from && event.date <= to)
+      .map((event) => localizeEvent(event, tz)) : [],
+    [eventResult.rows, from, to, tz],
   );
 
   useEffect(() => {
     if (view === "today") markSeen();
   }, [view, markSeen]);
 
-  const showCalendar = view === "month" || view === "year";
   const byDate = useMemo(() => {
     if (!showCalendar) return {};
     const q = query.trim().toLowerCase();
@@ -400,7 +430,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     if (!isSameMonth(d, cursor)) setCursor(d);
     setSelected(f.date);
     setForm(null);
-    load();
+    loadEventsRef.current();
     return null;
   }
 
@@ -472,12 +502,15 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     const saved = res.data || [];
     const ids = new Set(saved.map((r) => r.id));
     seq.current++; // drop any older reload that is still on its way
-    setEvents((prev) => [...prev.filter((e) => !ids.has(e.id)), ...saved]);
+    setEventResult((prev) => ({
+      ...prev,
+      rows: [...prev.rows.filter((e) => !ids.has(e.id)), ...saved],
+    }));
     const d = parseISO(f.date);
     if (!isSameMonth(d, cursor)) setCursor(d);
     setSelected(f.date);
     setForm(null);
-    load();
+    loadEventsRef.current();
     return null;
   }
 
@@ -486,7 +519,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     const { error } = await supabase.from("events").delete().eq("id", form.initial.id);
     if (error) return error.message;
     setForm(null);
-    await load();
+    await loadEventsRef.current();
     return null;
   }
 
@@ -506,7 +539,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     const { error } = await supabase.from("events").delete().eq("series_id", id);
     if (error) return error.message;
     setForm(null);
-    await load();
+    await loadEventsRef.current();
     return null;
   }
 
@@ -650,7 +683,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               <button type="button" className="btn ghost sm" onClick={postsApi.reload}>Retry</button>
             </div>
           )}
-          {showCalendar && eventsLoading && events.length === 0 && <p className="load-status" role="status">Loading events…</p>}
+          {showCalendar && eventsPending && <p className="load-status" role="status">Loading events…</p>}
           {view !== "chat" && view !== "games" && view !== "today" && view !== "circle" && (
             <header className="top">
               {view !== "month" && (
@@ -758,7 +791,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               me={me}
               others={others}
               events={localEvents}
-              eventsPending={eventsLoading && events.length === 0}
+              eventsPending={eventsPending}
               now={currentDate}
               today={todayKey}
               colorOf={colorOf}
@@ -1086,7 +1119,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           </button>
         )}
 
-      {callApi.call.status !== "idle" && (
+      {callActive && (
         <Suspense fallback={null}>
           <CallOverlay
             api={callApi}

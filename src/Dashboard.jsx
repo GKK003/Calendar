@@ -159,10 +159,10 @@ export default function Dashboard({
             <h2>Happening now</h2>
             <small>Events underway in {zoneLabel(zone)} time</small>
           </div>
-          <span className="dhappening-count">{happeningNow.length}</span>
+          <span className="dhappening-count">{eventsPending ? '–' : happeningNow.length}</span>
         </div>
         {happeningNow.length === 0 ? (
-          <p className="empty">Nothing is happening right now.</p>
+          <p className="empty">{eventsPending ? 'Checking current events…' : 'Nothing is happening right now.'}</p>
         ) : (
           <div className="dhappening-list">
             {happeningNow.map((e) => (
@@ -187,10 +187,10 @@ export default function Dashboard({
             <h2>Deadlines</h2>
             <small>Events starting within the next 2 hours</small>
           </div>
-          <span className="ddeadline-count">{deadlines.length}</span>
+          <span className="ddeadline-count">{eventsPending ? '–' : deadlines.length}</span>
         </div>
         {deadlines.length === 0 ? (
-          <p className="empty">No events starting in the next 2 hours.</p>
+          <p className="empty">{eventsPending ? 'Checking upcoming events…' : 'No events starting in the next 2 hours.'}</p>
         ) : (
           <div className="ddeadline-list">
             {deadlines.map(({ event: e, secondsUntil }) => (
@@ -207,7 +207,7 @@ export default function Dashboard({
         <section className="card dpanel dme">
           <h2>Your day</h2>
           <div className="dlist">
-            {mine.length === 0 && <p className="empty">Nothing planned today.</p>}
+            {mine.length === 0 && <p className="empty">{eventsPending ? 'Checking your plans…' : 'Nothing planned today.'}</p>}
             {mine.map((e) => (
               <EventRow key={e.id} e={e} zone={zone} onOpen={onOpenEvent} />
             ))}
@@ -221,7 +221,7 @@ export default function Dashboard({
               <h2>{o.display_name}'s day</h2>
               {o.about && <p className="muted small">{o.about}</p>}
               <div className="dlist">
-                {theirs.length === 0 && <p className="empty">Nothing planned today.</p>}
+                {theirs.length === 0 && <p className="empty">{eventsPending ? 'Checking plans…' : 'Nothing planned today.'}</p>}
                 {theirs.map((e) => (
                   <EventRow key={e.id} e={e} zone={zone} onOpen={onOpenEvent} />
                 ))}

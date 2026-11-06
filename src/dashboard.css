@@ -7,6 +7,10 @@
 .dash > * {
   grid-column: span 12;
 }
+.dfeed > .post {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 240px;
+}
 .dhero {
   padding: 28px;
   display: flex;

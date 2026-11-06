@@ -21,27 +21,26 @@ export default function usePosts(space, userId, galleryOpen, today, zone) {
   const load = useCallback(async () => {
     const id = ++seq.current
     try {
-      const { data: p, error: postsError } = await supabase
-        .from('posts').select('*').order('created_at', { ascending: false }).limit(100)
+      const [feed, archive] = await Promise.all([
+        supabase.from('posts')
+          .select('id, user_id, body, checkin, place, photos, created_at, post_replies(id, post_id, user_id, body, created_at)')
+          .eq('space_id', space.id).order('created_at', { ascending: false }).limit(100)
+          .order('created_at', { referencedTable: 'post_replies', ascending: true }),
+        galleryOpen && supabase.from('posts').select('id,user_id,photos,created_at')
+          .eq('space_id', space.id).order('created_at', { ascending: false }).limit(1000),
+      ])
+      const { data, error: postsError } = feed
       if (postsError) throw postsError
       if (id !== seq.current) return
-      let r = []
-      if (p.length) {
-        const res = await supabase.from('post_replies').select('*')
-          .in('post_id', p.map((x) => x.id)).order('created_at', { ascending: true })
-        if (res.error) throw res.error
-        if (id !== seq.current) return
-        r = res.data
-      }
+      const p = data.map(({ post_replies, ...post }) => post)
+      const r = data.flatMap((post) => post.post_replies || [])
       setPosts(p)
       setReplies(r)
 
       let shots = null
       let paths = []
-      if (galleryOpen) {
-        const { data, error } = await supabase.from('posts').select('id,user_id,photos,created_at')
-          .order('created_at', { ascending: false }).limit(1000)
-        if (id !== seq.current) return
+      if (archive) {
+        const { data, error } = archive
         if (error) throw error
         shots = (data || []).flatMap((x) =>
           (x.photos || []).map((path) => ({ path, postId: x.id, user_id: x.user_id, created_at: x.created_at })),
@@ -72,7 +71,7 @@ export default function usePosts(space, userId, galleryOpen, today, zone) {
     } catch (loadError) {
       if (id === seq.current) setError(loadError.message || 'Could not load posts and photos.')
     }
-  }, [galleryOpen, today, zone])
+  }, [galleryOpen, space.id, today, zone])
 
   useEffect(() => {
     loadRef.current = load

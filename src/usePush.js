@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase.js'
+import { readStoredValue, writeStoredValue } from './lib.js'
 
 const KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
+const SYNC_INTERVAL = 24 * 60 * 60 * 1000
 
 const toBytes = (b64) => {
   const pad = '='.repeat((4 - (b64.length % 4)) % 4)
@@ -22,18 +24,28 @@ function initial() {
   return Notification.permission === 'granted' ? 'checking' : 'off'
 }
 
+async function subscriptionId({ endpoint, keys }) {
+  if (!globalThis.crypto?.subtle) return ''
+  const encoded = new TextEncoder().encode(JSON.stringify([endpoint, keys.p256dh, keys.auth]))
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', encoded))
+  return Array.from(hash, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 export default function usePush(space, userId) {
-  const [state, setState] = useState(initial)
+  const storageKey = `push-sync:${space.id}:${userId}`
+  const [state, setState] = useState(() => {
+    const status = initial()
+    return status === 'checking' && readStoredValue(storageKey) === 'off' ? 'off' : status
+  })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
   const save = useCallback(
-    async (sub) => {
-      const j = sub.toJSON()
+    async (subscription) => {
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert(
-          { user_id: userId, space_id: space.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
+          { user_id: userId, space_id: space.id, endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth },
           { onConflict: 'endpoint' },
         )
       if (error) throw error
@@ -41,31 +53,45 @@ export default function usePush(space, userId) {
     [space.id, userId],
   )
 
-  // register the service worker; if notifications were already allowed, keep this phone subscribed
+  // Keep granted subscriptions working, and refresh the saved registration
+  // when it changes or periodically to recover from server-side removal.
   useEffect(() => {
     const status = initial()
     if (status === 'unavailable') return
     let active = true
-    setState(status)
-    ;(async () => {
+    const saved = readStoredValue(storageKey)
+    const checking = status === 'checking' && saved !== 'off'
+    setState(checking ? 'checking' : status === 'checking' ? 'off' : status)
+    async function sync() {
       try {
         await navigator.serviceWorker.register('/sw.js')
-        if (!active || status !== 'checking') return
+        if (!active || !checking) return
         const reg = await navigator.serviceWorker.ready
         if (!active) return
         let sub = await reg.pushManager.getSubscription()
         if (!active) return
         if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(KEY) })
         if (!active) return
-        await save(sub)
+        const subscription = sub.toJSON()
+        const id = await subscriptionId(subscription)
+        if (!active) return
+        const [savedId, savedAt] = saved.split(':')
+        if (!id || id !== savedId || !(Date.now() - Number(savedAt) < SYNC_INTERVAL)) {
+          await save(subscription)
+          if (active) writeStoredValue(storageKey, `${id}:${Date.now()}`)
+        }
         if (active) setState('on')
       } catch (e) {
-        if (active && status === 'checking') setState('off')
+        if (active && checking) setState('off')
         console.warn('push setup', e)
       }
-    })()
-    return () => { active = false }
-  }, [save])
+    }
+    const timer = setTimeout(sync, 1000)
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [save, storageKey])
 
   async function enable() {
     if (busy) return
@@ -78,7 +104,10 @@ export default function usePush(space, userId) {
       const reg = await navigator.serviceWorker.ready
       let sub = await reg.pushManager.getSubscription()
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(KEY) })
-      await save(sub)
+      const subscription = sub.toJSON()
+      const id = await subscriptionId(subscription)
+      await save(subscription)
+      writeStoredValue(storageKey, `${id}:${Date.now()}`)
       setState('on')
     } catch (e) {
       setErr(e.message || 'Could not turn on notifications.')
@@ -97,8 +126,10 @@ export default function usePush(space, userId) {
       if (sub) {
         const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
         if (error) throw error
+        writeStoredValue(storageKey, '')
         await sub.unsubscribe()
       }
+      writeStoredValue(storageKey, 'off')
       setState(Notification.permission === 'denied' ? 'denied' : 'off')
     } catch (e) {
       setErr(e.message || 'Could not turn off notifications. Try again.')

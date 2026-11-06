@@ -6,6 +6,7 @@ import { uuid } from './lib.js'
 const BUCKET = 'chat-media'
 const PAGE = 80
 const RECENT = 300
+const RING_WINDOW = 40_000
 
 // A chat is identified by a key: 'group' for the group chat, or the other person's user id for a private chat.
 export const GROUP = 'group'
@@ -26,84 +27,95 @@ function inChat(m, key, me) {
 }
 
 const LIGHT = 'id, user_id, to_user, kind, body, meta, deleted_at, created_at'
+const DEFAULT_SETTINGS = { color: null, quick_emoji: null, nicknames: {} }
 
-export default function useChat(space, userId, members) {
+function messagesFor(query, key, userId) {
+  return key === GROUP
+    ? query.is('to_user', null)
+    : query.or(`and(user_id.eq.${userId},to_user.eq.${key}),and(user_id.eq.${key},to_user.eq.${userId})`)
+}
+
+export default function useChat(space, userId, members, chatOpen) {
   const [activeKey, setActiveKey] = useState(null) // null = the list of chats is shown
   const [limit, setLimit] = useState(PAGE)
   const [messages, setMessages] = useState([])
-  const [recent, setRecent] = useState([])
+  const [{ messages: recent, loadedAt: recentMessagesLoadedAt }, setRecent] = useState({ messages: [], loadedAt: 0 })
   const [extraLast, setExtraLast] = useState({})
   const [reactions, setReactions] = useState([])
   const [reads, setReads] = useState([])
-  const [settings, setSettings] = useState({ color: null, quick_emoji: null, nicknames: {} })
+  const [readsReady, setReadsReady] = useState(false)
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [urls, setUrls] = useState({})
   const [typers, setTypers] = useState({})
   const [onlineIds, setOnlineIds] = useState([])
   const [hasMore, setHasMore] = useState(false)
-  const seq = useRef(0)
+  const summaryRequest = useRef(null)
+  const readsVersion = useRef(0)
+  const threadSeq = useRef(0)
+  const settingsRequest = useRef(null)
+  const settingsVersion = useRef(0)
+  const settingsRef = useRef(null)
   const signed = useRef({})
   const signedAt = useRef(Date.now())
   const chan = useRef(null)
   const lastTyping = useRef(0)
   const typingTimers = useRef({})
-  const loadRef = useRef(() => {})
+  const loadThreadRef = useRef(() => {})
   const membersRef = useRef(members)
   membersRef.current = members
-  const keyRef = useRef(activeKey)
-  keyRef.current = activeKey
+  const visibleKey = chatOpen ? activeKey : null
+  const keyRef = useRef(visibleKey)
+  keyRef.current = visibleKey
+  const chatOpenRef = useRef(chatOpen)
+  chatOpenRef.current = chatOpen
 
-  const load = useCallback(async () => {
-    const id = ++seq.current
-    const key = activeKey
-
-    let activeQuery = null
-    if (key) {
-      activeQuery = supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(limit)
-      activeQuery =
-        key === GROUP
-          ? activeQuery.is('to_user', null)
-          : activeQuery.or(`and(user_id.eq.${userId},to_user.eq.${key}),and(user_id.eq.${key},to_user.eq.${userId})`)
+  const loadSummary = useCallback(async (changed = false) => {
+    const pending = summaryRequest.current
+    if (pending) {
+      pending.changed ||= changed
+      return
     }
-    const [rc, ra, rd, st] = await Promise.all([
-      supabase.from('messages').select(LIGHT).order('created_at', { ascending: false }).limit(RECENT),
-      activeQuery || Promise.resolve({ data: null }),
-      supabase.from('chat_reads').select('*'),
-      supabase.from('chat_settings').select('*').eq('space_id', space.id).maybeSingle(),
-    ])
-    if (id !== seq.current) return
-    if (!rc.error && rc.data) {
-      setRecent(rc.data)
-      // chats whose last message is older than the newest 300: ask for it separately
-      if (rc.data.length >= RECENT) {
-        const others = membersRef.current.filter((m) => m.user_id !== userId).map((m) => m.user_id)
-        const missing = [GROUP, ...others].filter((k) => !rc.data.some((m) => inChat(m, k, userId)))
-        const found = {}
-        for (const k of missing) {
-          let q = supabase.from('messages').select(LIGHT).order('created_at', { ascending: false }).limit(1)
-          q = k === GROUP ? q.is('to_user', null) : q.or(`and(user_id.eq.${userId},to_user.eq.${k}),and(user_id.eq.${k},to_user.eq.${userId})`)
-          const r = await q
-          if (r.data?.[0]) found[k] = r.data[0]
+    const request = { changed: false }
+    summaryRequest.current = request
+    try {
+      do {
+        request.changed = false
+        const version = readsVersion.current
+        const [messagesResult, readsResult] = await Promise.all([
+          supabase.from('messages').select(LIGHT).eq('space_id', space.id)
+            .order('created_at', { ascending: false }).limit(RECENT),
+          supabase.from('chat_reads').select('user_id, chat_key, read_at').eq('space_id', space.id),
+        ])
+        if (summaryRequest.current !== request) return
+        if (!messagesResult.error && messagesResult.data) {
+          setRecent({ messages: messagesResult.data, loadedAt: Date.now() })
         }
-        if (id !== seq.current) return
-        setExtraLast(found)
-      } else {
-        setExtraLast((p) => (Object.keys(p).length ? {} : p))
-      }
+        if (version === readsVersion.current) {
+          if (!readsResult.error && readsResult.data) setReads(readsResult.data)
+          setReadsReady(true)
+        }
+      } while (request.changed)
+    } finally {
+      if (summaryRequest.current === request) summaryRequest.current = null
     }
-    if (!rd.error && rd.data) setReads(rd.data)
-    if (st.data) setSettings({ color: st.data.color, quick_emoji: st.data.quick_emoji, nicknames: st.data.nicknames || {} })
+  }, [space.id])
 
+  const loadThread = useCallback(async () => {
+    const key = visibleKey
     if (!key) return
-    if (ra.error || !ra.data) return
-    const list = [...ra.data].reverse()
+    const id = ++threadSeq.current
+    const { data, error } = await messagesFor(supabase.from('messages').select('*')
+      .eq('space_id', space.id).order('created_at', { ascending: false }).limit(limit), key, userId)
+    if (id !== threadSeq.current || error || !data) return
+    const list = [...data].reverse()
     let rx = []
     if (list.length) {
       const r = await supabase.from('message_reactions').select('*').in('message_id', list.map((x) => x.id))
-      if (id !== seq.current) return
+      if (id !== threadSeq.current) return
       rx = r.data || []
     }
     setMessages(list)
-    setHasMore(ra.data.length >= limit)
+    setHasMore(data.length >= limit)
     setReactions(rx)
 
     if (Date.now() - signedAt.current > 20 * 3600 * 1000) {
@@ -112,25 +124,89 @@ export default function useChat(space, userId, members) {
     }
     const missing = [...new Set(list.flatMap((x) => x.media || []))].filter((p) => !signed.current[p])
     if (!missing.length) return
-    const { data } = await supabase.storage.from(BUCKET).createSignedUrls(missing, 86400)
-    for (const item of data || []) if (item.signedUrl) signed.current[item.path] = item.signedUrl
+    const result = await supabase.storage.from(BUCKET).createSignedUrls(missing, 86400)
+    if (id !== threadSeq.current) return
+    for (const item of result.data || []) if (item.signedUrl) signed.current[item.path] = item.signedUrl
     setUrls({ ...signed.current })
-  }, [activeKey, limit, userId, space.id])
+  }, [visibleKey, limit, userId, space.id])
 
-  loadRef.current = load
+  const storeSettings = useCallback((row) => {
+    const next = row ? { color: row.color, quick_emoji: row.quick_emoji, nicknames: row.nicknames || {} } : DEFAULT_SETTINGS
+    settingsVersion.current += 1
+    settingsRef.current = next
+    setSettings(next)
+  }, [])
+
+  const loadSettings = useCallback(() => {
+    if (settingsRequest.current) return settingsRequest.current
+    const version = settingsVersion.current
+    const request = supabase.from('chat_settings').select('color, quick_emoji, nicknames')
+      .eq('space_id', space.id).maybeSingle().then(({ data, error }) => {
+        if (!error && version === settingsVersion.current) storeSettings(data)
+        return error
+      }).finally(() => {
+        if (settingsRequest.current === request) settingsRequest.current = null
+      })
+    settingsRequest.current = request
+    return request
+  }, [space.id, storeSettings])
+
+  loadThreadRef.current = loadThread
   useEffect(() => {
-    load()
-  }, [load])
+    if (!document.hidden) loadSummary()
+    return () => { summaryRequest.current = null }
+  }, [loadSummary])
+
+  useEffect(() => {
+    loadThread()
+    return () => { threadSeq.current += 1 }
+  }, [loadThread])
+
+  useEffect(() => {
+    if (chatOpen) loadSettings()
+  }, [chatOpen, loadSettings])
+
+  useEffect(() => () => {
+    settingsVersion.current += 1
+    settingsRequest.current = null
+    settingsRef.current = null
+  }, [space.id])
+
+  // Older per-chat previews are only used in the chat list.
+  useEffect(() => {
+    if (!chatOpen) return
+    if (recent.length < RECENT) {
+      setExtraLast((previous) => Object.keys(previous).length ? {} : previous)
+      return
+    }
+    let active = true
+    const keys = [GROUP, ...members.filter((m) => m.user_id !== userId).map((m) => m.user_id)]
+    const missing = keys.filter((key) => !recent.some((m) => inChat(m, key, userId)))
+    Promise.all(missing.map(async (key) => {
+      const query = supabase.from('messages').select(LIGHT).eq('space_id', space.id)
+        .order('created_at', { ascending: false }).limit(1)
+      const { data } = await messagesFor(query, key, userId)
+      return [key, data?.[0]]
+    })).then((results) => {
+      if (active) setExtraLast(Object.fromEntries(results.filter(([, message]) => message)))
+    })
+    return () => { active = false }
+  }, [chatOpen, members, recent, space.id, userId])
 
   // live updates (the database only sends me the messages I am allowed to see)
   useEffect(() => {
     const f = `space_id=eq.${space.id}`
-    const again = () => loadRef.current()
+    const messageChanged = (payload) => {
+      loadSummary(true)
+      if (keyRef.current && (payload.eventType === 'DELETE' || inChat(payload.new, keyRef.current, userId))) {
+        loadThreadRef.current()
+      }
+    }
     const ch = supabase
       .channel('chat-db-' + space.id)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: f }, (p) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: f }, (p) => {
         const m = p.new
-        if (!import.meta.env.VITE_VAPID_PUBLIC_KEY && m.user_id !== userId && m.kind !== 'call' && document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        if (p.eventType === 'INSERT' && !import.meta.env.VITE_VAPID_PUBLIC_KEY && m.user_id !== userId && m.kind !== 'call' && document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           try {
             const sender = membersRef.current.find((x) => x.user_id === m.user_id)
             new Notification(sender?.display_name || 'New message', { body: preview(m), tag: 'chat' })
@@ -138,21 +214,46 @@ export default function useChat(space, userId, members) {
             /* some phones only allow notifications through a service worker */
           }
         }
-        again()
+        messageChanged(p)
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: f }, again)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions', filter: f }, again)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_reads', filter: f }, again)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_settings', filter: f }, again)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions', filter: f }, () => loadThreadRef.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_reads', filter: f }, (p) => {
+        const row = p.eventType === 'DELETE' ? p.old : p.new
+        if (!row.user_id || !row.chat_key) return
+        readsVersion.current += 1
+        if (summaryRequest.current) summaryRequest.current.changed = true
+        setReads((current) => {
+          const others = current.filter((read) => read.user_id !== row.user_id || read.chat_key !== row.chat_key)
+          return p.eventType === 'DELETE' ? others : [...others, row]
+        })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_settings', filter: f }, (p) => {
+        if (p.eventType === 'DELETE') {
+          if (p.old.space_id === space.id) storeSettings(null)
+        } else {
+          storeSettings(p.new)
+        }
+      })
       .subscribe()
     // a phone that was asleep may have missed events: refresh when the app is shown again
-    const vis = () => !document.hidden && again()
+    let wasHidden = document.hidden
+    const vis = () => {
+      if (document.hidden) {
+        wasHidden = true
+        return
+      }
+      if (!wasHidden) return
+      wasHidden = false
+      loadSummary(true)
+      loadThreadRef.current()
+      if (chatOpenRef.current) loadSettings()
+    }
     document.addEventListener('visibilitychange', vis)
     return () => {
       document.removeEventListener('visibilitychange', vis)
       supabase.removeChannel(ch)
     }
-  }, [space.id, userId])
+  }, [space.id, userId, loadSummary, loadSettings, storeSettings])
 
   // typing + "active now"
   useEffect(() => {
@@ -258,7 +359,8 @@ export default function useChat(space, userId, members) {
       return err.message || 'Could not send. Try again.'
     }
     notifyTyping(false)
-    loadRef.current()
+    loadSummary(true)
+    loadThreadRef.current()
     return null
   }
 
@@ -288,7 +390,8 @@ export default function useChat(space, userId, members) {
       .update({ body: body.trim(), edited_at: new Date().toISOString() })
       .eq('id', id)
     if (error) return error.message
-    loadRef.current()
+    loadSummary(true)
+    loadThreadRef.current()
     return null
   }
 
@@ -299,7 +402,8 @@ export default function useChat(space, userId, members) {
       .eq('id', m.id)
     if (error) return error.message
     if (m.media?.length) await supabase.storage.from(BUCKET).remove(m.media)
-    loadRef.current()
+    loadSummary(true)
+    loadThreadRef.current()
     return null
   }
 
@@ -314,17 +418,29 @@ export default function useChat(space, userId, members) {
         .upsert({ message_id: messageId, space_id: space.id, user_id: userId, emoji }, { onConflict: 'message_id,user_id' }))
     }
     if (error) return error.message
-    loadRef.current()
+    loadThreadRef.current()
     return null
   }
 
   async function saveSettings(patch) {
-    const next = { ...settings, ...patch }
+    if (!settingsRef.current) {
+      const error = await loadSettings()
+      if (error) return error.message
+    }
+    const current = settingsRef.current
+    const next = { ...current, ...patch }
+    if (patch.nicknames) {
+      next.nicknames = { ...current.nicknames }
+      for (const [id, name] of Object.entries(patch.nicknames)) {
+        if (name.trim()) next.nicknames[id] = name.trim()
+        else delete next.nicknames[id]
+      }
+    }
     const { error } = await supabase
       .from('chat_settings')
       .upsert({ space_id: space.id, color: next.color, quick_emoji: next.quick_emoji, nicknames: next.nicknames }, { onConflict: 'space_id' })
     if (error) return error.message
-    setSettings(next)
+    storeSettings(next)
     return null
   }
 
@@ -347,21 +463,28 @@ export default function useChat(space, userId, members) {
 
   const unread = useMemo(() => chats.reduce((n, c) => n + c.unread, 0), [chats])
   const unreadActive = chats.find((c) => c.key === activeKey)?.unread || 0
+  const latestIncomingCall = useMemo(
+    () => recent.find((message) => message.kind === 'call' && message.to_user === userId && message.user_id !== userId) || null,
+    [recent, userId],
+  )
+  const recentCallsMayBeMissing = recent.length >= RECENT &&
+    Date.parse(recent[recent.length - 1].created_at) > Date.now() - RING_WINDOW
 
   const latest = messages.length ? messages[messages.length - 1].created_at : ''
   const myRead = activeKey ? myReadOf(activeKey) : ''
 
   // mark the open chat as read
   const markRead = useCallback(async () => {
-    if (!activeKey || !latest || latest <= myRead) return
+    if (!readsReady || !visibleKey || !latest || latest <= myRead) return
+    readsVersion.current += 1
     setReads((list) => {
-      const rest = list.filter((r) => !(r.user_id === userId && r.chat_key === activeKey))
-      return [...rest, { user_id: userId, space_id: space.id, chat_key: activeKey, read_at: latest }]
+      const rest = list.filter((r) => !(r.user_id === userId && r.chat_key === visibleKey))
+      return [...rest, { user_id: userId, space_id: space.id, chat_key: visibleKey, read_at: latest }]
     })
     await supabase
       .from('chat_reads')
-      .upsert({ user_id: userId, space_id: space.id, chat_key: activeKey, read_at: latest }, { onConflict: 'user_id,chat_key' })
-  }, [activeKey, latest, myRead, userId, space.id])
+      .upsert({ user_id: userId, space_id: space.id, chat_key: visibleKey, read_at: latest }, { onConflict: 'user_id,chat_key' })
+  }, [readsReady, visibleKey, latest, myRead, userId, space.id])
 
   // when did the other person (private chat) or the other people (group) last read this chat
   const partnerRead = activeKey && activeKey !== GROUP ? reads.find((r) => r.user_id === activeKey && r.chat_key === userId)?.read_at || '' : ''
@@ -369,7 +492,8 @@ export default function useChat(space, userId, members) {
 
   return {
     activeKey, openChat, closeChat, chats, unread, unreadActive,
-    messages, reactions, urls, settings, hasMore,
+    messages, reactions, urls, settings, loadSettings, hasMore,
+    latestIncomingCall, recentCallsMayBeMissing, recentMessagesLoadedAt,
     typing: (activeKey && typers[activeKey]) || [],
     onlineIds,
     partnerRead, groupReads,

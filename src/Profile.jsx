@@ -1,9 +1,20 @@
 import { useRef, useState } from 'react'
 import { Camera, Check, LogOut, Trash2 } from 'lucide-react'
 import { supabase } from './supabase.js'
-import { CITIES, PALETTE } from './lib.js'
+import { CITIES, PALETTE, uuid } from './lib.js'
 import { validateImageFile } from './photo.js'
 import Avatar from './Avatar.jsx'
+
+const AVATAR_CACHE_SECONDS = '2592000'
+
+function ownAvatarPath(storage, url, userId) {
+  const prefix = storage.getPublicUrl(`${userId}/`).data.publicUrl
+  const base = url?.split(/[?#]/, 1)[0]
+  if (!base?.startsWith(prefix)) return null
+  const filename = base.slice(prefix.length)
+  if (!/^(avatar\.jpg|[\da-f-]{36}\.(?:jpg|webp))$/i.test(filename)) return null
+  return `${userId}/${filename}`
+}
 
 // Crop to a centered square and shrink, so phone photos stay small
 function toSquareBlob(file, size = 256) {
@@ -13,24 +24,27 @@ function toSquareBlob(file, size = 256) {
     const img = new Image()
     const url = URL.createObjectURL(file)
     const release = () => URL.revokeObjectURL(url)
-    img.onload = () => {
+    img.onload = async () => {
       try {
         if (!img.width || !img.height || img.width > 12000 || img.height > 12000 || img.width * img.height > 50_000_000) {
           throw new Error('This image is too large to process. Choose a smaller image.')
         }
         const side = Math.min(img.width, img.height)
         const c = document.createElement('canvas')
-        c.width = c.height = size
+        c.width = c.height = Math.min(side, size)
         const context = c.getContext('2d')
         if (!context) throw new Error('Image processing is unavailable in this browser.')
-        context.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size)
-        c.toBlob((blob) => {
-          release()
-          blob ? resolve(blob) : reject(new Error('Could not process this image.'))
-        }, 'image/jpeg', 0.85)
+        context.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, c.width, c.height)
+        const webp = await new Promise((done) => c.toBlob(done, 'image/webp', 0.8))
+        const blob = webp?.type === 'image/webp'
+          ? webp
+          : await new Promise((done) => c.toBlob(done, 'image/jpeg', 0.8))
+        if (!blob) throw new Error('Could not process this image.')
+        resolve(blob)
       } catch (error) {
-        release()
         reject(error)
+      } finally {
+        release()
       }
     }
     img.onerror = () => {
@@ -82,40 +96,56 @@ export default function Profile({ session, member, others = [], color, onSaved }
     }
   }
 
+  async function updatePhoto(storage, nextUrl, uploadedPath) {
+    const previous = member.avatar_url ?? null
+    const update = supabase.from('members').update({ avatar_url: nextUrl }).eq('user_id', member.user_id)
+    const guarded = previous === null ? update.is('avatar_url', null) : update.eq('avatar_url', previous)
+    const { data, error, status } = await guarded.select('avatar_url').maybeSingle()
+    if (error || !data) {
+      // A lost response can leave the update committed. Keep its file unless the write was rejected.
+      const rejected = !error || (error.code && status >= 400 && status < 500 && status !== 408 && status !== 499)
+      if (uploadedPath && rejected) await storage.remove([uploadedPath])
+      await onSaved()
+      throw error || new Error('Your profile photo changed on another device. Try again.')
+    }
+
+    const oldPath = ownAvatarPath(storage, previous, member.user_id)
+    const cleanup = oldPath ? await storage.remove([oldPath]) : null
+    await onSaved()
+    const text = nextUrl ? 'Photo updated.' : 'Photo removed.'
+    setPhotoMsg(cleanup?.error
+      ? { ok: false, text: `${text} The previous file could not be deleted from storage.` }
+      : { ok: true, text })
+  }
+
   async function uploadPhoto(e) {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file) return
+    if (!file || photoBusy) return
     setPhotoBusy(true)
     setPhotoMsg(null)
     try {
       const blob = await toSquareBlob(file)
-      const path = `${member.user_id}/avatar.jpg`
-      const { error } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+      const extension = blob.type === 'image/webp' ? 'webp' : 'jpg'
+      const path = `${member.user_id}/${uuid()}.${extension}`
+      const storage = supabase.storage.from('avatars')
+      const { error } = await storage.upload(path, blob, { cacheControl: AVATAR_CACHE_SECONDS, contentType: blob.type })
       if (error) throw error
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-      const { error: dbError } = await supabase.from('members').update({ avatar_url: `${data.publicUrl}?v=${Date.now()}` }).eq('user_id', member.user_id)
-      if (dbError) throw dbError
-      await onSaved()
-      setPhotoMsg({ ok: true, text: 'Photo updated.' })
+      await updatePhoto(storage, storage.getPublicUrl(path).data.publicUrl, path)
     } catch (err) {
       const missing = /bucket|not found|avatar_url/i.test(err.message || '')
-      setPhotoMsg({ ok: false, text: missing ? 'Photos need the database setup in supabase/social.sql.' : err.message })
+      setPhotoMsg({ ok: false, text: missing ? 'Photos need the database setup in supabase/social.sql.' : err.message || 'Could not update the photo.' })
     } finally {
       setPhotoBusy(false)
     }
   }
 
   async function removePhoto() {
+    if (photoBusy) return
     setPhotoBusy(true)
     setPhotoMsg(null)
     try {
-      const { error: storageError } = await supabase.storage.from('avatars').remove([`${member.user_id}/avatar.jpg`])
-      if (storageError) throw storageError
-      const { error } = await supabase.from('members').update({ avatar_url: null }).eq('user_id', member.user_id)
-      if (error) throw error
-      await onSaved()
-      setPhotoMsg({ ok: true, text: 'Photo removed.' })
+      await updatePhoto(supabase.storage.from('avatars'), null)
     } catch (error) {
       setPhotoMsg({ ok: false, text: error.message || 'Could not remove the photo.' })
     } finally {
