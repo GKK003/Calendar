@@ -1234,26 +1234,22 @@ label.check {
     box-shadow 0.18s ease,
     background 0.18s ease;
 }
-.today-menu-clocks {
-  min-width: 0;
-  flex: 1;
+.today-right-clocks {
+  position: fixed;
+  z-index: 90;
+  top: 10px;
+  right: 22px;
 }
-.today-menu-clocks .clocks {
-  gap: 6px;
+.today-right-clocks .clock {
+  min-width: 124px;
+  padding: 9px 14px;
+  border-radius: 12px;
 }
-.today-menu-clocks .clocks.compact .clock {
-  min-width: 0;
-  padding: 5px 7px;
-  border-radius: 9px;
-}
-.today-menu-clocks .clocks.compact .clock span {
-  font-size: 9px;
-  white-space: nowrap;
-}
-.today-menu-clocks .clocks.compact .clock b {
+.today-right-clocks .clock span {
   font-size: 12px;
-  letter-spacing: 0;
-  white-space: nowrap;
+}
+.today-right-clocks .clock b {
+  font-size: 22px;
 }
 .brutal-menu-trigger:hover {
   transform: translate(-2px, -2px);
@@ -1428,6 +1424,20 @@ label.check {
     gap: 8px;
     max-width: calc(100vw - 28px);
   }
+  .today-right-clocks {
+    top: 14px;
+    right: 14px;
+  }
+  .today-right-clocks .clock {
+    min-width: 96px;
+    padding: 6px 9px;
+  }
+  .today-right-clocks .clock b {
+    font-size: 16px;
+  }
+  .today-right-clocks .clock span {
+    font-size: 10px;
+  }
   .brutal-menu-trigger {
     min-height: 46px;
     padding: 6px 12px 6px 6px;
@@ -1449,6 +1459,12 @@ label.check {
   .chat-mode .main {
     padding-top: 48px;
   }
+}
+@media (max-width: 360px) {
+  .today-right-clocks .clocks { gap: 5px; }
+  .today-right-clocks .clock { min-width: 0; padding: 5px 6px; }
+  .today-right-clocks .clock b { font-size: 13px; }
+  .today-right-clocks .clock span { font-size: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rail,

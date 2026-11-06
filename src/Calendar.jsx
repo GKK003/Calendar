@@ -463,10 +463,10 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span className="brutal-menu-trigger-icon">{menuOpen ? <X size={23} strokeWidth={2.5} /> : <Menu size={23} strokeWidth={2.5} />}</span>
             <span className="brutal-menu-trigger-label">MENU</span>
           </button>
-          {view === "today" && !menuOpen && (
-            <div className="today-menu-clocks"><Clocks compact tz={tz} /></div>
-          )}
         </div>
+        {view === "today" && !menuOpen && (
+          <div className="today-right-clocks"><Clocks tz={tz} /></div>
+        )}
         {menuOpen && <button className="brutal-menu-scrim" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}
         <nav id="main-navigation" className={`rail${menuOpen ? " menu-open" : ""}`} onClick={() => setMenuOpen(false)} aria-label="Main navigation">
           <div className="logo">S</div>
