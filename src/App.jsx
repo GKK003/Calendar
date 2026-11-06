@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, configured } from './supabase.js'
 import Auth from './Auth.jsx'
 import Setup from './Setup.jsx'
-import Calendar from './Calendar.jsx'
+const Calendar = lazy(() => import('./Calendar.jsx'))
 
 function StatusCard({ title, message, onRetry }) {
   return (
@@ -108,5 +108,9 @@ export default function App() {
   if (session === undefined || (session && profile === undefined)) return <div className="center muted" role="status">Loading your calendar…</div>
   if (!session) return <Auth />
   if (!profile) return <Setup onDone={loadProfile} />
-  return <Calendar session={session} member={profile.member} space={profile.space} onProfileChange={loadProfile} />
+  return (
+    <Suspense fallback={<div className="center muted" role="status">Loading your calendar.</div>}>
+      <Calendar session={session} member={profile.member} space={profile.space} onProfileChange={loadProfile} />
+    </Suspense>
+  )
 }
