@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase.js'
 import { resizeImage } from './photo.js'
-import { readStoredValue, writeStoredValue } from './lib.js'
-import { uuid } from './lib.js'
+import { dateInZone, readStoredValue, uuid, writeStoredValue } from './lib.js'
 
 const BUCKET = 'post-photos'
 
-export default function usePosts(space, userId) {
+export default function usePosts(space, userId, galleryOpen, today, zone) {
   const seenKey = 'posts-seen-' + space.id
   const [posts, setPosts] = useState([])
   const [replies, setReplies] = useState([])
   const [urls, setUrls] = useState({})
-  const [gallery, setGallery] = useState([])
+  const [gallery, setGallery] = useState(null)
   const [seen, setSeen] = useState(() => readStoredValue(seenKey))
   const [error, setError] = useState('')
   const seq = useRef(0)
+  const loadRef = useRef(null)
   const signed = useRef({})
   const signedAt = useRef(Date.now())
 
@@ -33,49 +33,64 @@ export default function usePosts(space, userId) {
         if (id !== seq.current) return
         r = res.data
       }
-      // Gallery currently keeps the 1,000 newest photo posts.
-      const g = await supabase.from('posts').select('id,user_id,photos,created_at')
-        .order('created_at', { ascending: false }).limit(1000)
-      if (g.error) throw g.error
-      if (id !== seq.current) return
-      const shots = (g.data || []).flatMap((x) =>
-        (x.photos || []).map((path) => ({ path, postId: x.id, user_id: x.user_id, created_at: x.created_at })),
-      )
       setPosts(p)
       setReplies(r)
-      setGallery(shots)
+
+      let shots = null
+      let paths = []
+      if (galleryOpen) {
+        const { data, error } = await supabase.from('posts').select('id,user_id,photos,created_at')
+          .order('created_at', { ascending: false }).limit(1000)
+        if (id !== seq.current) return
+        if (error) throw error
+        shots = (data || []).flatMap((x) =>
+          (x.photos || []).map((path) => ({ path, postId: x.id, user_id: x.user_id, created_at: x.created_at })),
+        )
+        paths = shots.map((x) => x.path)
+      } else if (today) {
+        paths = p.flatMap((post) =>
+          post.photos?.length && dateInZone(zone, new Date(post.created_at)) === today ? post.photos : [],
+        )
+      }
+
       if (Date.now() - signedAt.current > 20 * 3600 * 1000) {
         signed.current = {}
         signedAt.current = Date.now()
       }
-      const wanted = new Set([...p.flatMap((x) => x.photos || []), ...shots.map((x) => x.path)])
-      const missing = [...wanted].filter((path) => !signed.current[path])
+      const missing = [...new Set(paths)].filter((path) => !signed.current[path])
       for (let i = 0; i < missing.length; i += 100) {
         const { data, error: signError } = await supabase.storage.from(BUCKET)
           .createSignedUrls(missing.slice(i, i + 100), 86400)
+        if (id !== seq.current) return
         if (signError) throw signError
         for (const item of data || []) if (item.signedUrl) signed.current[item.path] = item.signedUrl
       }
       if (id !== seq.current) return
       setUrls({ ...signed.current })
+      if (shots) setGallery(shots)
       setError('')
     } catch (loadError) {
       if (id === seq.current) setError(loadError.message || 'Could not load posts and photos.')
     }
-  }, [])
+  }, [galleryOpen, today, zone])
 
   useEffect(() => {
+    loadRef.current = load
     load()
+    return () => { seq.current += 1 }
+  }, [load])
+
+  useEffect(() => {
+    const refresh = () => loadRef.current()
     const ch = supabase
       .channel('posts-' + space.id)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `space_id=eq.${space.id}` }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_replies', filter: `space_id=eq.${space.id}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `space_id=eq.${space.id}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_replies', filter: `space_id=eq.${space.id}` }, refresh)
       .subscribe()
     return () => {
-      seq.current += 1
       supabase.removeChannel(ch)
     }
-  }, [space.id, load])
+  }, [space.id])
 
   async function add({ body, checkin, place, files }) {
     const paths = []
@@ -100,7 +115,7 @@ export default function usePosts(space, userId) {
       if (paths.length) await supabase.storage.from(BUCKET).remove(paths)
       return err.message || 'Could not post. Try again.'
     }
-    load()
+    loadRef.current()
     return null
   }
 
@@ -108,7 +123,7 @@ export default function usePosts(space, userId) {
     const { error } = await supabase.from('posts').delete().eq('id', post.id)
     if (error) return error.message
     if (post.photos?.length) await supabase.storage.from(BUCKET).remove(post.photos)
-    load()
+    loadRef.current()
     return null
   }
 
@@ -117,14 +132,14 @@ export default function usePosts(space, userId) {
       .from('post_replies')
       .insert({ space_id: space.id, post_id: postId, body: body.trim() })
     if (error) return error.message
-    load()
+    loadRef.current()
     return null
   }
 
   async function removeReply(id) {
     const { error } = await supabase.from('post_replies').delete().eq('id', id)
     if (error) return error.message
-    load()
+    loadRef.current()
     return null
   }
 

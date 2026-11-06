@@ -747,21 +747,6 @@
   }
 }
 
-.push-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 12px 16px;
-  border-radius: 18px;
-  background: var(--green-soft);
-  border: 1px solid var(--green);
-}
-.push-banner span {
-  flex: 1;
-  min-width: 200px;
-}
-
 /* ---------- Messenger-style list of chats ---------- */
 .chat-hub {
   padding: 0;

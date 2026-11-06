@@ -2,7 +2,12 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, configured } from './supabase.js'
 import Auth from './Auth.jsx'
 import Setup from './Setup.jsx'
-const Calendar = lazy(() => import('./Calendar.jsx'))
+let calendarModule
+function loadCalendar() {
+  calendarModule ??= import('./Calendar.jsx')
+  return calendarModule
+}
+const Calendar = lazy(loadCalendar)
 
 function StatusCard({ title, message, onRetry }) {
   return (
@@ -52,19 +57,18 @@ export default function App() {
     const request = ++profileRequest.current
     setProfile((current) => current?.member?.user_id === userId ? current : undefined)
     setProfileError('')
+    loadCalendar().catch(() => {}) // Suspense and the error boundary handle the render-time import.
     try {
-      const { data: member, error: memberError } = await supabase
-        .from('members').select('*').eq('user_id', userId).maybeSingle()
+      const { data, error } = await supabase
+        .from('members').select('*, space:spaces(*)').eq('user_id', userId).maybeSingle()
       if (request !== profileRequest.current) return
-      if (memberError) throw memberError
-      if (!member) {
+      if (error) throw error
+      if (!data) {
         setProfile(null)
         return
       }
-      const { data: space, error: spaceError } = await supabase
-        .from('spaces').select('*').eq('id', member.space_id).single()
-      if (request !== profileRequest.current) return
-      if (spaceError) throw spaceError
+      const { space, ...member } = data
+      if (!space) throw new Error('Could not load your shared space.')
       setProfile({ member, space })
     } catch (error) {
       if (request !== profileRequest.current) return

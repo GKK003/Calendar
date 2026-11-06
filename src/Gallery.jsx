@@ -3,12 +3,12 @@ import { format, parseISO } from 'date-fns'
 import './gallery.css'
 import Lightbox from './Lightbox.jsx'
 
-export default function Gallery({ shots, urls, me, others, memberById }) {
+export default function Gallery({ shots, urls, error, me, others, memberById }) {
   const [who, setWho] = useState('all')
   const [open, setOpen] = useState(null)
 
   const list = useMemo(
-    () => shots.filter((s) => urls[s.path] && (who === 'all' || s.user_id === who)),
+    () => shots?.filter((s) => urls[s.path] && (who === 'all' || s.user_id === who)) || [],
     [shots, urls, who],
   )
 
@@ -29,9 +29,11 @@ export default function Gallery({ shots, urls, me, others, memberById }) {
       <div className="gallery-head">
         <div>
           <h2>Gallery</h2>
-          <p className="muted small">
-            {list.length} {list.length === 1 ? 'photo' : 'photos'} from your posts, saved here automatically
-          </p>
+          {shots && (
+            <p className="muted small">
+              {list.length} {list.length === 1 ? 'photo' : 'photos'} from your posts, saved here automatically
+            </p>
+          )}
         </div>
         {others.length > 0 && (
           <div className="seg tiny" role="group" aria-label="Filter gallery by person">
@@ -46,7 +48,8 @@ export default function Gallery({ shots, urls, me, others, memberById }) {
         )}
       </div>
 
-      {list.length === 0 && <p className="empty">No photos yet. Photos you add to a post appear here.</p>}
+      {!shots && !error && <p className="empty" role="status">Loading photos…</p>}
+      {shots && list.length === 0 && <p className="empty">No photos yet. Photos you add to a post appear here.</p>}
 
       {months.map((m) => (
         <section key={m.key} className="gmonth">

@@ -13,13 +13,13 @@ const isIos = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navig
 const standalone =
   typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true)
 
-// state: 'unavailable' | 'install' | 'off' | 'on' | 'denied'
+// state: 'unavailable' | 'install' | 'checking' | 'off' | 'on' | 'denied'
 function initial() {
   if (!KEY || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return 'unavailable'
   if (isIos && !standalone) return 'install'
   if (typeof Notification === 'undefined' || !('PushManager' in window)) return 'unavailable'
   if (Notification.permission === 'denied') return 'denied'
-  return 'off'
+  return Notification.permission === 'granted' ? 'checking' : 'off'
 }
 
 export default function usePush(space, userId) {
@@ -43,20 +43,28 @@ export default function usePush(space, userId) {
 
   // register the service worker; if notifications were already allowed, keep this phone subscribed
   useEffect(() => {
-    if (initial() === 'unavailable') return
+    const status = initial()
+    if (status === 'unavailable') return
+    let active = true
+    setState(status)
     ;(async () => {
       try {
         await navigator.serviceWorker.register('/sw.js')
-        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+        if (!active || status !== 'checking') return
         const reg = await navigator.serviceWorker.ready
+        if (!active) return
         let sub = await reg.pushManager.getSubscription()
+        if (!active) return
         if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(KEY) })
+        if (!active) return
         await save(sub)
-        setState('on')
+        if (active) setState('on')
       } catch (e) {
+        if (active && status === 'checking') setState('off')
         console.warn('push setup', e)
       }
     })()
+    return () => { active = false }
   }, [save])
 
   async function enable() {

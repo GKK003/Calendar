@@ -67,22 +67,41 @@ export const zoneLabel = (tz) => (ZONES.find((z) => z.id === tz) || ZONES[0]).la
 
 export const zoneOfCity = (city) => (CITIES.find((c) => c.id === city) || CITIES[0]).tz
 
+function zonedFormatter(locale, options) {
+  const byZone = new Map()
+  return (timeZone) => {
+    if (!byZone.has(timeZone)) {
+      byZone.set(timeZone, new Intl.DateTimeFormat(locale, { ...options, timeZone }))
+    }
+    return byZone.get(timeZone)
+  }
+}
+
+const clockFormat = zonedFormatter('en-GB', {
+  hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit',
+})
+const dateFormat = zonedFormatter('en-CA', {
+  year: 'numeric', month: '2-digit', day: '2-digit',
+})
+const offsetFormat = zonedFormatter('en-US', {
+  hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+})
+const wallTimeFormat = zonedFormatter('en-GB', {
+  hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+})
+
 export function clockIn(tz, date = new Date()) {
-  return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date)
+  return clockFormat(tz).format(date)
 }
 
 export function dateInZone(tz, date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(date)
+  const parts = dateFormat(tz).formatToParts(date)
   const get = (type) => parts.find((part) => part.type === type).value
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
 function tzOffset(tz, ts) {
-  const p = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-  }).formatToParts(new Date(ts))
+  const p = offsetFormat(tz).formatToParts(new Date(ts))
   const g = (t) => Number(p.find((x) => x.type === t).value)
   return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second')) - ts
 }
@@ -94,9 +113,7 @@ export function convertTime(dateStr, time, from, to) {
   const guess = Date.UTC(y, m - 1, d, h, mi)
   let utc = guess - tzOffset(from, guess)
   utc = guess - tzOffset(from, utc)
-  const p = new Intl.DateTimeFormat('en-GB', {
-    timeZone: to, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-  }).formatToParts(new Date(utc))
+  const p = wallTimeFormat(to).formatToParts(new Date(utc))
   const g = (t) => p.find((x) => x.type === t).value
   const dayShift = Math.round((Date.UTC(+g('year'), +g('month') - 1, +g('day')) - Date.UTC(y, m - 1, d)) / 86400000)
   return { time: `${g('hour')}:${g('minute')}`, dayShift }

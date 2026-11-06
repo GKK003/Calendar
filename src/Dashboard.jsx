@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { Activity, CalendarDays, Clock3, MapPin, MessageCircle, Plus, Sparkles } from 'lucide-react'
 import './dashboard.css'
-import './gallery.css'
 import Avatar from './Avatar.jsx'
-import Lightbox from './Lightbox.jsx'
 import { Composer, PostCard } from './Posts.jsx'
 import { TYPES, clockIn, dateInZone, eventOriginLabel, mapHref, sortEvents, timeLabel, zoneLabel, zoneOfCity } from './lib.js'
+
+const Lightbox = lazy(() => import('./Lightbox.jsx'))
 
 function EventRow({ e, owner, color, showDate, zone, onOpen }) {
   const special = e.type === 'special'
@@ -53,6 +53,9 @@ export default function Dashboard({
   me,
   others,
   events,
+  eventsPending,
+  now,
+  today,
   colorOf,
   memberById,
   api,
@@ -61,9 +64,7 @@ export default function Dashboard({
   onOpenCalendar,
 }) {
   const [zoom, setZoom] = useState(null)
-  const [now, setNow] = useState(() => new Date())
   const zone = zoneOfCity(me.city)
-  const today = dateInZone(zone, now)
   const nowClock = clockIn(zone, now)
   const todayLabel = new Intl.DateTimeFormat(undefined, {
     timeZone: zone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -71,17 +72,6 @@ export default function Dashboard({
   const nowParts = nowClock.split(':').map(Number)
   const nowSeconds = nowParts[0] * 3600 + nowParts[1] * 60 + nowParts[2]
   const yesterday = format(addDays(parseISO(today), -1), 'yyyy-MM-dd')
-
-  // Keep upcoming events and the two-hour deadline list current while the page is open.
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000)
-    const wake = () => document.visibilityState === 'visible' && setNow(new Date())
-    document.addEventListener('visibilitychange', wake)
-    return () => {
-      clearInterval(t)
-      document.removeEventListener('visibilitychange', wake)
-    }
-  }, [])
 
   const happeningNow = sortEvents(events.filter((e) => {
     if (e.date === today && !e.start_time) return true
@@ -139,9 +129,8 @@ export default function Dashboard({
       <section className="card dhero">
         <div className="dhero-text">
           <h1>Your day</h1>
-          <p className="muted">
-            {todayLabel} · {dayStatus}
-          </p>
+          <p className="muted">{todayLabel}</p>
+          <p className="muted" role="status">{eventsPending ? 'Loading events…' : dayStatus}</p>
           <div className="dhero-actions">
             <button type="button" className="btn primary sm" onClick={() => onNewEvent()}>
               <Plus size={16} /> Add event
@@ -269,12 +258,14 @@ export default function Dashboard({
       </section>
 
       {zoom && (
-        <Lightbox
-          items={zoom.items}
-          index={zoom.index}
-          onIndex={(index) => setZoom({ ...zoom, index })}
-          onClose={() => setZoom(null)}
-        />
+        <Suspense fallback={null}>
+          <Lightbox
+            items={zoom.items}
+            index={zoom.index}
+            onIndex={(index) => setZoom({ ...zoom, index })}
+            onClose={() => setZoom(null)}
+          />
+        </Suspense>
       )}
     </div>
   )

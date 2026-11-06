@@ -55,9 +55,9 @@ import {
   zoneLabel,
   zoneOfCity,
 } from "./lib.js";
-import EventForm from "./EventForm.jsx";
 import Clocks from "./Clocks.jsx";
 import Avatar from "./Avatar.jsx";
+import Dashboard from "./Dashboard.jsx";
 import useChat from "./useChat.js";
 import { useView } from "./router.js";
 import useCall from "./useCall.js";
@@ -68,12 +68,12 @@ import "./special.css";
 const YearView = lazy(() => import("./YearView.jsx"));
 const Profile = lazy(() => import("./Profile.jsx"));
 const PartnerProfile = lazy(() => import("./PartnerProfile.jsx"));
-const Dashboard = lazy(() => import("./Dashboard.jsx"));
 const CirclePage = lazy(() => import("./CirclePage.jsx"));
 const Gallery = lazy(() => import("./Gallery.jsx"));
 const Chat = lazy(() => import("./Chat.jsx"));
 const Games = lazy(() => import("./Games.jsx"));
 const CallOverlay = lazy(() => import("./CallOverlay.jsx"));
+const EventForm = lazy(() => import("./EventForm.jsx"));
 const VIEW_TITLES = {
   today: "Today", month: "Month", year: "Year", gallery: "Gallery",
   games: "Games", circle: "Circle", chat: "Chat", profile: "Profile",
@@ -97,8 +97,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const [who, setWho] = useState("all");
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(null); // { initial, editing }
-  const postsApi = usePosts(space, member.user_id);
-  const { markSeen } = postsApi;
 
   const year = cursor.getFullYear();
 
@@ -217,6 +215,8 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   const profileOf = others.find((m) => m.user_id === profileTab);
   const tz = zoneOfCity(me.city);
   const todayKey = dateInZone(tz, currentDate);
+  const postsApi = usePosts(space, member.user_id, view === "gallery", view === "today" ? todayKey : null, tz);
+  const { markSeen } = postsApi;
   const previousToday = useRef(initialDate);
   const chat = useChat(space, member.user_id, members);
   const callApi = useCall({
@@ -280,11 +280,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     if (view === "today") markSeen();
   }, [view, markSeen]);
 
+  const showCalendar = view === "month" || view === "year";
   const byDate = useMemo(() => {
+    if (!showCalendar) return {};
     const q = query.trim().toLowerCase();
     const map = {};
-    for (const raw of events) {
-      const e = localizeEvent(raw, tz);
+    for (const e of localEvents) {
       if (!types.has(e.type)) continue;
       if (who !== "all" && e.user_id !== who) continue;
       if (q && !(e.title + " " + (e.note || "")).toLowerCase().includes(q))
@@ -293,7 +294,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
     }
     for (const k in map) map[k] = sortEvents(map[k]);
     return map;
-  }, [events, types, who, query, tz]);
+  }, [showCalendar, localEvents, types, who, query]);
 
   const days = useMemo(
     () =>
@@ -649,7 +650,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               <button type="button" className="btn ghost sm" onClick={postsApi.reload}>Retry</button>
             </div>
           )}
-          {eventsLoading && events.length === 0 && <p className="load-status" role="status">Loading events…</p>}
+          {showCalendar && eventsLoading && events.length === 0 && <p className="load-status" role="status">Loading events…</p>}
           {view !== "chat" && view !== "games" && view !== "today" && view !== "circle" && (
             <header className="top">
               {view !== "month" && (
@@ -757,6 +758,9 @@ export default function Calendar({ session, member, space, onProfileChange }) {
               me={me}
               others={others}
               events={localEvents}
+              eventsPending={eventsLoading && events.length === 0}
+              now={currentDate}
+              today={todayKey}
               colorOf={colorOf}
               memberById={memberById}
               api={postsApi}
@@ -768,6 +772,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <Gallery
               shots={postsApi.gallery}
               urls={postsApi.urls}
+              error={postsApi.error}
               me={me}
               others={others}
               memberById={memberById}
@@ -1081,31 +1086,35 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           </button>
         )}
 
-      <Suspense fallback={null}>
-        <CallOverlay
-          api={callApi}
-          partner={callPeer}
-          color={callPeer ? colorOf(callPeer.user_id) : undefined}
-          name={
-            callPeer
-              ? chat.settings.nicknames?.[callPeer.user_id] ||
-                callPeer.display_name
-              : ""
-          }
-        />
-      </Suspense>
+      {callApi.call.status !== "idle" && (
+        <Suspense fallback={null}>
+          <CallOverlay
+            api={callApi}
+            partner={callPeer}
+            color={callPeer ? colorOf(callPeer.user_id) : undefined}
+            name={
+              callPeer
+                ? chat.settings.nicknames?.[callPeer.user_id] ||
+                  callPeer.display_name
+                : ""
+            }
+          />
+        </Suspense>
+      )}
 
       {form && (
-        <EventForm
-          tz={tz}
-          initial={form.initial}
-          editing={form.editing}
-          members={members}
-          onSave={save}
-          onDelete={remove}
-          onDeleteSeries={removeSeries}
-          onClose={() => setForm(null)}
-        />
+        <Suspense fallback={null}>
+          <EventForm
+            tz={tz}
+            initial={form.initial}
+            editing={form.editing}
+            members={members}
+            onSave={save}
+            onDelete={remove}
+            onDeleteSeries={removeSeries}
+            onClose={() => setForm(null)}
+          />
+        </Suspense>
       )}
     </div>
   );

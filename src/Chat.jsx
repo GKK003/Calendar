@@ -762,6 +762,7 @@ function Settings_({ chat, push, me, members, memberById, onClose }) {
         {push && push.state !== 'unavailable' && (
           <div className="set-block">
             <strong>Notifications</strong>
+            {push.state === 'checking' && <p className="muted small" role="status">Checking this phone’s notification settings…</p>}
             {push.state === 'on' && (
               <>
                 <p className="muted small"><Bell size={13} /> On for this phone. You get messages and ringing calls even when the app is closed.</p>
