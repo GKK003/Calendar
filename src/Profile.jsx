@@ -2,22 +2,41 @@ import { useRef, useState } from 'react'
 import { Camera, Check, LogOut, Trash2 } from 'lucide-react'
 import { supabase } from './supabase.js'
 import { CITIES, PALETTE } from './lib.js'
+import { validateImageFile } from './photo.js'
 import Avatar from './Avatar.jsx'
 
 // Crop to a centered square and shrink, so phone photos stay small
 function toSquareBlob(file, size = 256) {
+  const problem = validateImageFile(file)
+  if (problem) return Promise.reject(new Error(problem))
   return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
+    const release = () => URL.revokeObjectURL(url)
     img.onload = () => {
-      const side = Math.min(img.width, img.height)
-      const c = document.createElement('canvas')
-      c.width = c.height = size
-      c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size)
-      URL.revokeObjectURL(url)
-      c.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not process this image.'))), 'image/jpeg', 0.85)
+      try {
+        if (!img.width || !img.height || img.width > 12000 || img.height > 12000 || img.width * img.height > 50_000_000) {
+          throw new Error('This image is too large to process. Choose a smaller image.')
+        }
+        const side = Math.min(img.width, img.height)
+        const c = document.createElement('canvas')
+        c.width = c.height = size
+        const context = c.getContext('2d')
+        if (!context) throw new Error('Image processing is unavailable in this browser.')
+        context.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size)
+        c.toBlob((blob) => {
+          release()
+          blob ? resolve(blob) : reject(new Error('Could not process this image.'))
+        }, 'image/jpeg', 0.85)
+      } catch (error) {
+        release()
+        reject(error)
+      }
     }
-    img.onerror = () => reject(new Error('Could not read this image. Try a JPG or PNG.'))
+    img.onerror = () => {
+      release()
+      reject(new Error('Could not read this image. Try a JPG or PNG.'))
+    }
     img.src = url
   })
 }
@@ -41,23 +60,26 @@ export default function Profile({ session, member, others = [], color, onSaved }
 
   async function saveProfile(e) {
     e.preventDefault()
+    if (busy) return
     const n = name.trim()
-    if (!n) return setMsg({ ok: false, text: 'Please enter a name.' })
+    if (!n || n.length > 30) return setMsg({ ok: false, text: 'Enter a name between 1 and 30 characters.' })
     setBusy(true)
     setMsg(null)
-    const { error } = await supabase.from('members').update({ display_name: n, color: col, city }).eq('user_id', member.user_id)
-    if (error) {
+    try {
+      const { error } = await supabase.from('members').update({
+        display_name: n,
+        color: col,
+        city,
+        about: about.trim() || null,
+      }).eq('user_id', member.user_id)
+      if (error) throw error
+      await onSaved()
+      setMsg({ ok: true, text: 'Profile saved.' })
+    } catch (error) {
+      setMsg({ ok: false, text: error.message || 'Could not save your profile.' })
+    } finally {
       setBusy(false)
-      return setMsg({ ok: false, text: error.message })
     }
-    const { error: aboutError } = await supabase.from('members').update({ about: about.trim() || null }).eq('user_id', member.user_id)
-    await onSaved()
-    setBusy(false)
-    setMsg(
-      aboutError
-        ? { ok: false, text: `Name and color saved, but the status was not saved: ${aboutError.message}` }
-        : { ok: true, text: 'Profile saved.' },
-    )
   }
 
   async function uploadPhoto(e) {
@@ -79,18 +101,26 @@ export default function Profile({ session, member, others = [], color, onSaved }
     } catch (err) {
       const missing = /bucket|not found|avatar_url/i.test(err.message || '')
       setPhotoMsg({ ok: false, text: missing ? 'Photos need the database setup in supabase/social.sql.' : err.message })
+    } finally {
+      setPhotoBusy(false)
     }
-    setPhotoBusy(false)
   }
 
   async function removePhoto() {
     setPhotoBusy(true)
     setPhotoMsg(null)
-    await supabase.storage.from('avatars').remove([`${member.user_id}/avatar.jpg`])
-    const { error } = await supabase.from('members').update({ avatar_url: null }).eq('user_id', member.user_id)
-    await onSaved()
-    setPhotoBusy(false)
-    setPhotoMsg(error ? { ok: false, text: error.message } : { ok: true, text: 'Photo removed.' })
+    try {
+      const { error: storageError } = await supabase.storage.from('avatars').remove([`${member.user_id}/avatar.jpg`])
+      if (storageError) throw storageError
+      const { error } = await supabase.from('members').update({ avatar_url: null }).eq('user_id', member.user_id)
+      if (error) throw error
+      await onSaved()
+      setPhotoMsg({ ok: true, text: 'Photo removed.' })
+    } catch (error) {
+      setPhotoMsg({ ok: false, text: error.message || 'Could not remove the photo.' })
+    } finally {
+      setPhotoBusy(false)
+    }
   }
 
   async function savePassword(e) {
@@ -99,12 +129,17 @@ export default function Profile({ session, member, others = [], color, onSaved }
     if (pw.length < 6) return setPwMsg({ ok: false, text: 'Use at least 6 characters.' })
     if (pw !== pw2) return setPwMsg({ ok: false, text: 'The two passwords do not match.' })
     setPwBusy(true)
-    const { error } = await supabase.auth.updateUser({ password: pw })
-    setPwBusy(false)
-    if (error) return setPwMsg({ ok: false, text: error.message })
-    setPw('')
-    setPw2('')
-    setPwMsg({ ok: true, text: 'Password changed.' })
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw })
+      if (error) throw error
+      setPw('')
+      setPw2('')
+      setPwMsg({ ok: true, text: 'Password changed.' })
+    } catch (error) {
+      setPwMsg({ ok: false, text: error.message || 'Could not change your password.' })
+    } finally {
+      setPwBusy(false)
+    }
   }
 
   return (
@@ -124,10 +159,10 @@ export default function Profile({ session, member, others = [], color, onSaved }
             <p className="muted small">The photo saves right away.</p>
           </div>
         </div>
-        {photoMsg && <p className={photoMsg.ok ? 'ok' : 'error'}>{photoMsg.text}</p>}
+        {photoMsg && <p className={photoMsg.ok ? 'ok' : 'error'} role={photoMsg.ok ? 'status' : 'alert'} aria-live={photoMsg.ok ? 'polite' : 'assertive'}>{photoMsg.text}</p>}
 
         <label>Name
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={30} />
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={30} required />
         </label>
 
         <div className="swatch-wrap">
@@ -156,7 +191,7 @@ export default function Profile({ session, member, others = [], color, onSaved }
         </label>
         <p className="muted small">{others.length ? `${others.map((o) => o.display_name).join(', ')} can see your status.` : 'Others will see this once they join.'}</p>
 
-        {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
+        {msg && <p className={msg.ok ? 'ok' : 'error'} role={msg.ok ? 'status' : 'alert'} aria-live={msg.ok ? 'polite' : 'assertive'}>{msg.text}</p>}
         <button className="btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>
       </form>
 
@@ -170,7 +205,7 @@ export default function Profile({ session, member, others = [], color, onSaved }
           <label>Repeat new password
             <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" minLength={6} />
           </label>
-          {pwMsg && <p className={pwMsg.ok ? 'ok' : 'error'}>{pwMsg.text}</p>}
+          {pwMsg && <p className={pwMsg.ok ? 'ok' : 'error'} role={pwMsg.ok ? 'status' : 'alert'} aria-live={pwMsg.ok ? 'polite' : 'assertive'}>{pwMsg.text}</p>}
           <button className="btn primary" disabled={pwBusy || !pw}>{pwBusy ? 'Saving…' : 'Change password'}</button>
         </form>
 

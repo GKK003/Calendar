@@ -38,6 +38,23 @@ export function uuid() {
   })
 }
 
+export function readStoredValue(key, fallback = '') {
+  try {
+    return globalThis.localStorage?.getItem(key) ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+export function writeStoredValue(key, value) {
+  try {
+    globalThis.localStorage?.setItem(key, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ---------- time zones ----------
 export const CITIES = [
   { id: 'tbilisi', label: 'Tbilisi', tz: 'Asia/Tbilisi' },

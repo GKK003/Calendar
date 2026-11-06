@@ -2,6 +2,7 @@
 
 .difficulty-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 16px}
 .difficulty-tabs button{padding:8px 16px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:transparent;font:inherit;font-weight:500;cursor:pointer;color:inherit}
+.games-empty-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .difficulty-tabs button.active{background:linear-gradient(135deg,#f6a,#f88);color:#fff;border-color:transparent}
 .game-history{padding:18px;background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
 .game-history-heading{display:flex;align-items:center;gap:11px;margin-bottom:14px}

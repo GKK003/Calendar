@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { Camera, MapPin, Send, Trash2, X } from 'lucide-react'
 import './posts.css'
 import Avatar from './Avatar.jsx'
 import { mapHref } from './lib.js'
+import { validateImageFile } from './photo.js'
 
 const CHECKINS = ['Home', 'Work', 'Class', 'Out', 'On my way', 'Arrived', 'Good night']
 const MAX_PHOTOS = 4
@@ -15,14 +16,23 @@ export function Composer({ me, color, onPost }) {
   const [checkin, setCheckin] = useState(null)
   const [place, setPlace] = useState('')
   const [files, setFiles] = useState([])
+  const filesRef = useRef(files)
+  filesRef.current = files
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const fileRef = useRef(null)
 
+  useEffect(() => () => filesRef.current.forEach((file) => URL.revokeObjectURL(file.preview)), [])
+
   function pick(e) {
     const chosen = [...(e.target.files || [])]
     e.target.value = ''
+    const invalid = chosen.find((file) => validateImageFile(file))
+    if (invalid) return setErr(validateImageFile(invalid))
     const room = MAX_PHOTOS - files.length
+    if (!room) return setErr(`You can add up to ${MAX_PHOTOS} photos.`)
+    if (chosen.length > room) setErr(`Only ${room} more photo${room === 1 ? '' : 's'} can be added.`)
+    else setErr('')
     const added = chosen.slice(0, room).map((file) => ({ file, preview: URL.createObjectURL(file) }))
     setFiles((p) => [...p, ...added])
   }
@@ -38,7 +48,12 @@ export function Composer({ me, color, onPost }) {
     if (!body.trim() && !checkin && !files.length) return setErr('Write something, check in or add a photo.')
     setBusy(true)
     setErr('')
-    const problem = await onPost({ body, checkin, place, files: files.map((f) => f.file) })
+    let problem
+    try {
+      problem = await onPost({ body, checkin, place, files: files.map((f) => f.file) })
+    } catch (error) {
+      problem = error.message || 'Could not post. Try again.'
+    }
     setBusy(false)
     if (problem) return setErr(problem)
     files.forEach((f) => URL.revokeObjectURL(f.preview))
@@ -102,7 +117,7 @@ export function Composer({ me, color, onPost }) {
         </div>
       )}
 
-      {err && <p className="error">{err}</p>}
+      {err && <p className="error" role="alert">{err}</p>}
 
       <div className="composer-actions">
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={pick} />

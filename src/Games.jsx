@@ -55,6 +55,54 @@ const formatHistoryDate = (value) => {
   return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" });
 };
 
+function isUsableGameState(state, game) {
+  if (!state || typeof state !== "object") return false;
+  if (game === "wordle" || game === "wordle-ka") {
+    const answers = game === "wordle-ka" ? GEORGIAN_WORD_DATA.answers : WORDS;
+    return answers.includes(state.answer)
+      && Array.isArray(state.guesses)
+      && state.guesses.length <= 6
+      && state.guesses.every((guess) => typeof guess?.word === "string" && [...guess.word].length === 5)
+      && typeof state.current === "string"
+      && [...state.current].length <= 5
+      && ["playing", "won", "lost"].includes(state.status);
+  }
+  const validGrid = (grid, allowEmpty = true) => Array.isArray(grid)
+    && grid.length === 9
+    && grid.every((row) => Array.isArray(row) && row.length === 9
+      && row.every((value) => Number.isInteger(value) && value >= (allowEmpty ? 0 : 1) && value <= 9));
+  return validGrid(state.values)
+    && validGrid(state.puzzle)
+    && validGrid(state.solution, false)
+    && state.puzzle.every((row, r) => row.every((value, c) =>
+      (value === 0 || value === state.solution[r][c])
+      && (value === 0 || state.values[r][c] === value)))
+    && Array.isArray(state.selected)
+    && state.selected.length === 2
+    && state.selected.every((value) => Number.isInteger(value) && value >= 0 && value < 9)
+    && ["playing", "won"].includes(state.status);
+}
+
+async function saveSharedState(id, expectedRevision, state, userId) {
+  const { data, error } = await supabase.rpc("save_shared_game_state", {
+    p_game_id: id,
+    p_expected_revision: expectedRevision,
+    p_state: state,
+  });
+  if (!error) return { data, error: null, legacy: false };
+
+  // Keep shared boards playable until the new SQL migration is applied.
+  const functionMissing = error.code === "PGRST202" || error.code === "42883"
+    || /save_shared_game_state.*(not found|schema cache)|function .* does not exist/i.test(error.message || "");
+  if (!functionMissing) return { data: null, error, legacy: false };
+  const fallback = await supabase.from("shared_games").update({
+    state,
+    updated_by: userId,
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  return { data: null, error: fallback.error, legacy: true };
+}
+
 export default function Games({ space, member, members }) {
   const path = usePath();
   const game = path.startsWith("/games/sudoku") ? "sudoku" : path.startsWith("/games/wordle-ka") ? "wordle-ka" : "wordle";
@@ -66,44 +114,69 @@ export default function Games({ space, member, members }) {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
   const writeQueue = useRef(Promise.resolve());
+  const revisionRef = useRef({ id: null, revision: 0 });
+  const queueGeneration = useRef(0);
+  const queuedWrites = useRef(0);
+  const loadSequence = useRef(0);
   const partner = members.find(m => m.user_id !== member.user_id);
   const nameById = useMemo(() => Object.fromEntries(members.map(m=>[m.user_id,m.display_name])), [members]);
 
   const load = useCallback(async () => {
+    const request = ++loadSequence.current;
     setLoading(true);
-    const { data, error } = await supabase.from("shared_games").select("*").eq("space_id", space.id).eq("game_type", game).maybeSingle();
-    if (error) setNotice("Games database isn't set up yet. Run supabase/games.sql in your Supabase SQL Editor.");
-    else if (data) {
-      const ok = isWordle ? Array.isArray(data.state?.guesses) : Array.isArray(data.state?.values) && Array.isArray(data.state?.puzzle) && Array.isArray(data.state?.solution);
-      if (ok) {
-        const storedState = data.state;
-        let history = Array.isArray(storedState.history) ? storedState.history : [];
-        // Preserve the current result from older versions the first time history is opened.
-        if (!history.length && ["won", "lost"].includes(storedState.status)) {
-          history = [makeHistoryRecord(game, storedState, storedState, data.updated_by, new Date(data.updated_at || data.created_at || Date.now()))];
+    setNotice("");
+    try {
+      const { data, error } = await supabase.from("shared_games").select("*").eq("space_id", space.id).eq("game_type", game).maybeSingle();
+      if (request !== loadSequence.current) return;
+      if (error) throw error;
+      if (data) {
+        const loadedRevision = Number(data.revision) || 0;
+        if (revisionRef.current.id === data.id && loadedRevision < revisionRef.current.revision) return;
+        if (!isUsableGameState(data.state, game)) {
+          revisionRef.current = { id: data.id, revision: Number(data.revision) || 0 };
+          setSession({ ...data, state: null });
+          setNotice("The saved board data is incomplete. Reload it or reset the board to start fresh.");
+        } else {
+          const storedState = data.state;
+          let history = Array.isArray(storedState.history) ? storedState.history : [];
+          if (!history.length && ["won", "lost"].includes(storedState.status)) {
+            history = [makeHistoryRecord(game, storedState, storedState, data.updated_by, new Date(data.updated_at || data.created_at || Date.now()))];
+          }
+          const normalized = { ...storedState, history };
+          if (!normalized.startedAt && normalized.status === "playing") normalized.startedAt = new Date().toISOString();
+          if (game === "sudoku" && !Number.isFinite(normalized.moves)) normalized.moves = 0;
+          revisionRef.current = { id: data.id, revision: Number(data.revision) || 0 };
+          setSession({ ...data, state: normalized });
         }
-        const normalized = { ...storedState, history };
-        if (!normalized.startedAt && normalized.status === "playing") normalized.startedAt = new Date().toISOString();
-        if (game === "sudoku" && !Number.isFinite(normalized.moves)) normalized.moves = 0;
-        setSession({ ...data, state: normalized });
+      } else {
+        const initial_state = isWordle ? wordState([], wordLanguage) : sudokuState();
+        const { data: created, error: createError } = await supabase.from("shared_games").insert({space_id:space.id, game_type:game, state:initial_state, updated_by:member.user_id}).select().single();
+        if (request !== loadSequence.current) return;
+        if (createError) {
+          const { data: retry, error: retryError } = await supabase.from("shared_games").select("*").eq("space_id",space.id).eq("game_type",game).maybeSingle();
+          if (request !== loadSequence.current) return;
+          if (retryError) throw retryError;
+          if (retry) {
+            revisionRef.current = { id: retry.id, revision: Number(retry.revision) || 0 };
+            setSession(retry);
+          } else throw createError;
+        } else {
+          revisionRef.current = { id: created.id, revision: Number(created.revision) || 0 };
+          setSession(created);
+        }
       }
-      else {
-        const history = Array.isArray(data.state?.history) ? data.state.history : [];
-        const fresh = isWordle ? wordState(history, wordLanguage) : sudokuState("normal", history);
-        await supabase.from("shared_games").update({state:fresh, updated_by:member.user_id, updated_at:new Date().toISOString()}).eq("id", data.id);
-        setSession({ ...data, state: fresh });
+    } catch (error) {
+      if (request === loadSequence.current) {
+        setNotice(error.code === "42P01"
+          ? "Games are not set up yet. Run supabase/games.sql in the Supabase SQL Editor."
+          : error.message || "Could not load the shared board. Check your connection and try again.");
       }
+    } finally {
+      if (request === loadSequence.current) setLoading(false);
     }
-    else {
-      const initial_state = isWordle ? wordState([], wordLanguage) : sudokuState();
-      const { data: created, error: createError } = await supabase.from("shared_games").insert({space_id:space.id, game_type:game, state:initial_state, updated_by:member.user_id}).select().single();
-      if (createError) {
-        const { data: retry } = await supabase.from("shared_games").select("*").eq("space_id",space.id).eq("game_type",game).maybeSingle();
-        if (retry) setSession(retry); else setNotice(isGeorgian ? "ქართული Wordle-ის ჩასართავად გაუშვით supabase/georgian-wordle.sql Supabase SQL Editor-ში." : "Couldn't create the shared board. Check the games SQL setup and try again.");
-      } else setSession(created);
-    }
-    setLoading(false);
   }, [space.id, game, isWordle, wordLanguage, member.user_id]);
 
   useEffect(() => { load(); }, [load]);
@@ -111,12 +184,32 @@ export default function Games({ space, member, members }) {
     const channel = supabase.channel(`shared-game-${space.id}-${game}`)
       .on("postgres_changes", {event:"*", schema:"public", table:"shared_games", filter:`space_id=eq.${space.id}`}, payload => {
         const next = payload.new;
-        if (next?.game_type === game) setSession(current => !current || current.game_type !== next.game_type || new Date(next.updated_at || 0) >= new Date(current.updated_at || 0) ? next : current);
+        if (next?.game_type !== game) return;
+        const nextRevision = Number(next.revision) || 0;
+        const currentRevision = revisionRef.current.id === next.id ? revisionRef.current.revision : 0;
+        if (nextRevision < currentRevision) return;
+        const currentSession = sessionRef.current;
+        if (!next.revision && currentSession?.id === next.id && new Date(next.updated_at || 0) < new Date(currentSession.updated_at || 0)) return;
+
+        if (queuedWrites.current > 0 && next.updated_by === member.user_id) {
+          revisionRef.current = { id: next.id, revision: nextRevision };
+          return;
+        }
+        if (queuedWrites.current > 0 && nextRevision > currentRevision) {
+          queueGeneration.current += 1;
+          queuedWrites.current = 0;
+          setNotice("The other player changed the board. Their latest version is shown; make your move again.");
+        }
+        revisionRef.current = { id: next.id, revision: nextRevision };
+        setSession((current) => {
+          if (current?.id === next.id && Number(current.revision || 0) > nextRevision) return current;
+          return next;
+        });
       }).subscribe();
     const refresh = () => { if (document.visibilityState === "visible") load(); };
     window.addEventListener("focus", refresh);
     return () => { window.removeEventListener("focus", refresh); supabase.removeChannel(channel); };
-  }, [space.id, game, load]);
+  }, [space.id, game, load, member.user_id]);
 
   const commit = (nextState) => {
     if (!session) return;
@@ -130,17 +223,54 @@ export default function Games({ space, member, members }) {
     setSession(optimistic);
     setNotice("");
     const id = session.id;
-    writeQueue.current = writeQueue.current.then(async () => {
+    const generation = queueGeneration.current;
+    const expectedRevision = (Number(session.revision) || 0) + queuedWrites.current;
+    queuedWrites.current += 1;
+    writeQueue.current = writeQueue.current.catch(() => {}).then(async () => {
+      if (generation !== queueGeneration.current) {
+        queuedWrites.current = Math.max(0, queuedWrites.current - 1);
+        return;
+      }
       setSaving(true);
-      const { error } = await supabase.from("shared_games").update({state:savedState, updated_by:member.user_id, updated_at:new Date().toISOString()}).eq("id",id);
-      if (error) setNotice("Move wasn't saved. Check your connection and try again.");
-      setSaving(false);
+      try {
+        const result = await saveSharedState(id, expectedRevision, savedState, member.user_id);
+        if (result.error) {
+          queueGeneration.current += 1;
+          queuedWrites.current = 0;
+          setNotice(result.error.code === "40001"
+            ? "The other player saved a move first. The latest board is loading; make your move again."
+            : "Move could not be saved. The latest board is loading; check your connection and try again.");
+          await load();
+          return;
+        }
+        if (result.data) revisionRef.current = { id, revision: Number(result.data.revision) || expectedRevision + 1 };
+        if (result.legacy) {
+          setNotice("Moves are syncing. Run supabase/best-practice-hardening.sql for conflict-safe updates.");
+        }
+        setSession((current) => current?.id !== id ? current : ({
+          ...current,
+          ...(queuedWrites.current === 1 ? { state: savedState } : {}),
+          revision: result.data?.revision ?? current.revision,
+          updated_at: result.data?.updated_at ?? new Date().toISOString(),
+        }));
+      } catch (error) {
+        queueGeneration.current += 1;
+        queuedWrites.current = 0;
+        setNotice(error.message || "Move could not be saved. The latest board is loading; try again.");
+        await load();
+      } finally {
+        queuedWrites.current = Math.max(0, queuedWrites.current - 1);
+        setSaving(false);
+      }
     }).catch(() => {
+      queueGeneration.current += 1;
       setNotice("Move wasn't saved. Check your connection and try again.");
+      queuedWrites.current = Math.max(0, queuedWrites.current - 1);
       setSaving(false);
     });
   };
   const reset = () => {
+    if (!window.confirm("Start a new shared board for everyone? The current game will be replaced.")) return;
     const history = Array.isArray(state?.history) ? state.history : [];
     commit(isWordle ? wordState(history, wordLanguage) : sudokuState(state?.difficulty || "normal", history));
   };
@@ -151,8 +281,13 @@ export default function Games({ space, member, members }) {
     commit(sudokuState(difficulty, Array.isArray(state.history) ? state.history : []));
   };
   const rawState = session && session.game_type === game ? session.state : null;
-  const validState = rawState && (isWordle ? Array.isArray(rawState.guesses) : Array.isArray(rawState.values) && Array.isArray(rawState.puzzle) && Array.isArray(rawState.solution));
+  const validState = rawState && isUsableGameState(rawState, game);
   const state = validState ? rawState : null;
+  const repairBoard = () => {
+    if (!session || !window.confirm("The saved board is unreadable. Start a fresh board for everyone?")) return;
+    const history = Array.isArray(session.state?.history) ? session.state.history : [];
+    commit(isWordle ? wordState(history, wordLanguage) : sudokuState("normal", history));
+  };
   const wordGuess = (letter) => {
     if (!state || state.status !== "playing") return;
     const current = (state.current || "");
@@ -255,8 +390,14 @@ export default function Games({ space, member, members }) {
     <header className="games-heading"><div className="games-icon"><Gamepad2 size={25}/></div><div><p className="games-eyebrow">YOUR SHARED SPACE</p><h1>Play together</h1><p className="games-subtitle">One board, two players. Every move syncs to both screens.</p></div></header>
     <div className="games-presence"><Users size={17}/><span>{member.display_name}</span><span className="presence-dot"/><span>{partner ? partner.display_name + " is your teammate" : "Waiting for your teammate"}</span><span className="live-pill">LIVE SYNC</span></div>
     <div className="games-tabs"><button className={isWordle ? "active" : ""} onClick={()=>setGame("wordle")}><Keyboard size={18}/> Wordle</button><button className={game === "sudoku" ? "active" : ""} onClick={()=>setGame("sudoku")}><Grid3X3 size={18}/> Sudoku</button></div>
-    {notice && <div className="games-notice" role="status">{notice}</div>}
-    {loading || !state ? <div className="games-loading">Loading shared board…</div> : isWordle ? <div className="game-card wordle-card">
+    {notice && <div className="games-notice" role="alert">{notice}</div>}
+    {loading ? <div className="games-loading" role="status">Loading shared board…</div> : !state ? <div className="games-loading" role="alert">
+      <p>{notice || "The saved board could not be read."}</p>
+      <div className="games-empty-actions">
+        {session?.state === null && <button className="games-reset" onClick={repairBoard}>Start a fresh board</button>}
+        <button className="games-reset" onClick={load}>Try again</button>
+      </div>
+    </div> : isWordle ? <div className="game-card wordle-card">
       <div className="game-card-head"><div><h2>{isGeorgian ? "ქართული Wordle" : "Wordle together"}</h2><p>{isGeorgian ? "გამოიცანით ხუთასოიანი სიტყვა ექვს ცდაში. გამოიყენეთ ქვემოთ მოცემული ქართული კლავიატურა ან აკრიფეთ ქართულად." : "Work together to find the five-letter word in six guesses. Type letters on your keyboard, press Enter to submit, and Backspace to erase."}</p></div><div className="wordle-header-tools"><div className="wordle-language-toggle" role="group" aria-label="Wordle language"><button className={!isGeorgian ? "active" : ""} onClick={()=>setGame("wordle")}>English</button><button className={isGeorgian ? "active" : ""} onClick={()=>setGame("wordle-ka")}>ქართული</button></div><button className="games-reset" onClick={reset} title={isGeorgian ? "ახალი თამაში" : "Start a new game"}><RotateCcw size={17}/>{isGeorgian ? "ახალი თამაში" : "New game"}</button></div></div>
       <div className="wordle-board" aria-label={isGeorgian ? "ქართული Wordle-ის დაფა" : "Shared Wordle board"}>{Array.from({length:6},(_,ri)=>{const guess=state.guesses[ri];const letters=guess?guess.word:ri===state.guesses.length?state.current:"";const colors=guess?score(guess.word,ri):[];return <div className="wordle-row" key={ri}>{Array.from({length:5},(_,ci)=><div key={ci} className={`wordle-tile ${guess?colors[ci]:letters[ci]?"filled":""}`} aria-label={letters[ci]||"empty"}>{letters[ci]||""}</div>)}</div>})}</div>
       <div className="wordle-keyboard">{(isGeorgian ? KA_LETTER_ROWS.slice(0, 3) : ["QWERTYUIOP","ASDFGHJKL"]).map(row=><div className="keyboard-row" key={row}>{[...row].map(k=><button key={k} className={keyStates[k] || ""} aria-label={`${k}${keyStates[k] ? `, ${keyStates[k]}` : ""}`} onClick={()=>wordGuess(k)}>{k}</button>)}</div>)}<div className="keyboard-row"><button className="key-wide key-backspace" aria-label={isGeorgian ? "წაშლა" : "Backspace"} title={isGeorgian ? "წაშლა" : "Backspace"} onClick={()=>wordGuess("BACKSPACE")}>⌫</button>{[...(isGeorgian ? KA_LETTER_ROWS[3] : "ZXCVBNM")].map(k=><button key={k} className={keyStates[k] || ""} aria-label={`${k}${keyStates[k] ? `, ${keyStates[k]}` : ""}`} onClick={()=>wordGuess(k)}>{k}</button>)}<button className="key-wide key-enter" aria-label={isGeorgian ? "შეყვანა" : "Enter guess"} title={isGeorgian ? "შეყვანა" : "Enter guess"} onClick={()=>wordGuess("ENTER")}>↵</button></div></div>

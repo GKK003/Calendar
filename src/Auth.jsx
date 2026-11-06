@@ -12,11 +12,16 @@ export default function Auth() {
     e.preventDefault()
     setBusy(true)
     setMsg('')
-    const fn = mode === 'in' ? supabase.auth.signInWithPassword : supabase.auth.signUp
-    const { data, error } = await fn.call(supabase.auth, { email, password })
-    setBusy(false)
-    if (error) return setMsg(error.message)
-    if (mode === 'up' && !data.session) setMsg('Check your email to confirm your account, then sign in.')
+    try {
+      const fn = mode === 'in' ? supabase.auth.signInWithPassword : supabase.auth.signUp
+      const { data, error } = await fn.call(supabase.auth, { email: email.trim(), password })
+      if (error) throw error
+      if (mode === 'up' && !data.session) setMsg('Check your email to confirm your account, then sign in.')
+    } catch (error) {
+      setMsg(error.message || 'Could not sign in. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -27,7 +32,7 @@ export default function Auth() {
         <p className="muted">Your shared calendar for work and study.</p>
         <label>Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
         <label>Password<input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'in' ? 'current-password' : 'new-password'} /></label>
-        {msg && <p className="error">{msg}</p>}
+        {msg && <p className="error" role="alert">{msg}</p>}
         <button className="btn primary" disabled={busy}>{busy ? 'Please wait…' : mode === 'in' ? 'Sign in' : 'Sign up'}</button>
         <button type="button" className="link" onClick={() => { setMode(mode === 'in' ? 'up' : 'in'); setMsg('') }}>
           {mode === 'in' ? 'No account yet? Sign up' : 'Have an account? Sign in'}

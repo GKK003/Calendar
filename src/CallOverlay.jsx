@@ -63,13 +63,13 @@ export default function CallOverlay({ api, partner, color, name }) {
   const showVideo = call.video && remote && call.status === 'connected'
 
   return (
-    <div className="call">
-      <video ref={rv} className={'call-remote' + (showVideo ? '' : ' hid')} autoPlay playsInline />
+    <div className="call" role="dialog" aria-modal="true" aria-label={`Call with ${name}`}>
+      <video ref={rv} className={'call-remote' + (showVideo ? '' : ' hid')} autoPlay playsInline aria-label="Call video" />
       {!showVideo && (
         <div className="call-who">
           <Avatar url={partner?.avatar_url} name={name} color={color} size="lg" />
           <h2>{name}</h2>
-          <p>{label || <Timer since={call.startedAt} />}</p>
+          <p>{label ? <span role="status">{label}</span> : <Timer since={call.startedAt} />}</p>
         </div>
       )}
       {showVideo && (
@@ -88,11 +88,11 @@ export default function CallOverlay({ api, partner, color, name }) {
         </div>
       ) : (
         <div className="call-actions">
-          <button className={'call-btn' + (muted ? ' on' : '')} onClick={api.toggleMute} aria-label="Mute">
+          <button className={'call-btn' + (muted ? ' on' : '')} onClick={api.toggleMute} aria-label={muted ? 'Unmute microphone' : 'Mute microphone'}>
             {muted ? <MicOff size={22} /> : <Mic size={22} />}
           </button>
           {call.video && (
-            <button className={'call-btn' + (camOff ? ' on' : '')} onClick={api.toggleCam} aria-label="Camera">
+            <button className={'call-btn' + (camOff ? ' on' : '')} onClick={api.toggleCam} aria-label={camOff ? 'Turn camera on' : 'Turn camera off'}>
               {camOff ? <VideoOff size={22} /> : <Video size={22} />}
             </button>
           )}

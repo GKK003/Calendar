@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { TYPES, ZONES, convertTime } from "./lib.js";
 import Clocks from "./Clocks.jsx";
@@ -84,6 +84,9 @@ export default function EventForm({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const downOnBackdrop = useRef(false);
+  const formRef = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const zone = f.zone;
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleDay = (n) =>
@@ -105,14 +108,69 @@ export default function EventForm({
       : null;
   const owner = editing && members.find((m) => m.user_id === initial.user_id);
 
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    formRef.current?.querySelector("input:not([type=hidden]), button")?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !formRef.current) return;
+      const focusable = [...formRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter((el) => el.getAttribute("aria-hidden") !== "true");
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    };
+  }, []);
+
   async function submit(e) {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
     setErr("");
-    const problem = await onSave(f);
-    setBusy(false);
-    if (problem) setErr(problem);
+    try {
+      const problem = await onSave(f);
+      if (problem) setErr(problem);
+    } catch (error) {
+      setErr(error.message || "Could not save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteWith(action) {
+    if (busy) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const problem = await action();
+      if (problem) setErr(problem);
+    } catch (error) {
+      setErr(error.message || "Could not delete. Try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -126,9 +184,9 @@ export default function EventForm({
         downOnBackdrop.current = false;
       }}
     >
-      <form className="sheet" onSubmit={submit}>
+      <form ref={formRef} className="sheet" role="dialog" aria-modal="true" aria-labelledby="event-form-title" onSubmit={submit}>
         <div className="sheet-head">
-          <h2>{editing ? "Edit event" : "New event"}</h2>
+          <h2 id="event-form-title">{editing ? "Edit event" : "New event"}</h2>
           <button
             type="button"
             className="icon-btn"
@@ -144,6 +202,7 @@ export default function EventForm({
           <input
             autoFocus
             required
+            maxLength={120}
             value={f.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="Lecture, shift, exam…"
@@ -243,6 +302,7 @@ export default function EventForm({
           Place
           <input
             value={f.place}
+            maxLength={500}
             onChange={(e) => set("place", e.target.value)}
             placeholder="Paste a map link or write an address"
           />
@@ -252,6 +312,7 @@ export default function EventForm({
           Note
           <textarea
             rows={2}
+            maxLength={2000}
             value={f.note}
             onChange={(e) => set("note", e.target.value)}
             placeholder="Add note"
@@ -368,11 +429,11 @@ export default function EventForm({
         )}
         {owner && <p className="muted small">Added by {owner.display_name}</p>}
 
-        {err && <p className="error">Could not save: {err}</p>}
+        {err && <p className="error" role="alert">{err}</p>}
 
         <div className="actions">
           {editing && (
-            <button type="button" className="btn danger" onClick={onDelete}>
+            <button type="button" className="btn danger" disabled={busy} onClick={() => deleteWith(onDelete)}>
               <Trash2 size={16} />{" "}
               {initial.series_id ? "Delete this day" : "Delete"}
             </button>
@@ -381,7 +442,8 @@ export default function EventForm({
             <button
               type="button"
               className="btn danger solid"
-              onClick={onDeleteSeries}
+              disabled={busy}
+              onClick={() => deleteWith(onDeleteSeries)}
             >
               <Trash2 size={16} /> Delete all
             </button>

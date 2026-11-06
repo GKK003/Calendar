@@ -16,8 +16,9 @@ Works on desktop and phone, with live sync for everyone in the shared space.
 2. Open **SQL Editor → New query**, paste the whole content of `supabase/schema.sql`, click **Run**.
 3. Run `supabase/chat.sql`, then `supabase/three-people.sql`, in that order. The current Chat page needs both; run them before inviting a third person.
 4. Run `supabase/social.sql` and `supabase/games.sql` to enable profile photos, posts, and shared games.
-5. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
-6. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
+5. Run `supabase/best-practice-hardening.sql` after the files above. It adds database-side field/upload limits and conflict-safe shared-game updates. Existing rows are retained. If an older row has a value outside the new limits, correct that value before editing the row; PostgreSQL checks it on every update.
+6. (Recommended) **Authentication → Providers → Email**: turn **off** "Confirm email" so sign-up works instantly.
+7. **Project Settings → API**: copy the **Project URL** and the **anon public key**.
 
 For an existing Supabase project that previously enabled Maps, Pet Room, or Cinema, run `supabase/remove-retired-features.sql` to delete their saved database data. If Cinema storage was configured, delete the deployed `r2` Edge Function and the `movies` bucket in Supabase Storage; also remove its Cloudflare R2 bucket if you want its uploaded videos deleted.
 

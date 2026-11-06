@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { format, parseISO } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 import { supabase } from './supabase.js'
-import { TYPES, localizeEvent, timeLabel, ymd } from './lib.js'
+import { TYPES, dateInZone, localizeEvent, timeLabel, ymd } from './lib.js'
 import Avatar from './Avatar.jsx'
+import Lightbox from './Lightbox.jsx'
 
 function Row({ e, withDate }) {
   return (
@@ -19,16 +20,46 @@ function Row({ e, withDate }) {
 export default function PartnerProfile({ partner, color, tz }) {
   const [zoom, setZoom] = useState(false)
   const [list, setList] = useState(null)
-  const today = ymd(new Date())
+  const [listError, setListError] = useState('')
+  const [reload, setReload] = useState(0)
+  const [now, setNow] = useState(() => new Date())
+  const today = dateInZone(tz, now)
+  const from = ymd(addDays(parseISO(today), -1))
+  const through = ymd(addDays(parseISO(today), 32))
+
+  useEffect(() => {
+    const update = () => setNow(new Date())
+    const timer = setInterval(update, 30_000)
+    document.addEventListener('visibilitychange', update)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', update)
+    }
+  }, [])
 
   useEffect(() => {
     let live = true
+    setList(null)
+    setListError('')
     supabase.from('events').select('*')
-      .eq('user_id', partner.user_id).gte('date', today)
-      .order('date').order('start_time').limit(30)
-      .then(({ data }) => live && setList((data || []).map((e) => localizeEvent(e, tz))))
+      .eq('user_id', partner.user_id).gte('date', from).lte('date', through)
+      .order('date').order('start_time').limit(200)
+      .then(({ data, error }) => {
+        if (!live) return
+        if (error) {
+          setListError(error.message)
+          setList([])
+          return
+        }
+        setList((data || []).map((e) => localizeEvent(e, tz)))
+      })
+      .catch((error) => {
+        if (!live) return
+        setListError(error.message || 'Could not load events.')
+        setList([])
+      })
     return () => { live = false }
-  }, [partner.user_id, today, tz])
+  }, [partner.user_id, from, through, tz, reload])
 
   const todays = (list || []).filter((e) => e.date === today)
   const next = (list || []).filter((e) => e.date > today).slice(0, 6)
@@ -50,7 +81,12 @@ export default function PartnerProfile({ partner, color, tz }) {
       <div className="card pcard">
         <h2>{partner.display_name}'s events</h2>
         {list === null ? (
-          <p className="muted small">Loading…</p>
+          <p className="muted small" role="status">Loading events…</p>
+        ) : listError ? (
+          <div className="data-alert" role="alert">
+            <span>Could not load events: {listError}</span>
+            <button className="btn ghost sm" onClick={() => setReload((n) => n + 1)}>Retry</button>
+          </div>
         ) : (
           <>
             <p className="muted small">Today</p>
@@ -62,9 +98,12 @@ export default function PartnerProfile({ partner, color, tz }) {
       </div>
 
       {zoom && (
-        <div className="overlay" onClick={() => setZoom(false)}>
-          <img className="lightbox" src={partner.avatar_url} alt={partner.display_name} />
-        </div>
+        <Lightbox
+          items={[{ url: partner.avatar_url, caption: `${partner.display_name}'s photo` }]}
+          index={0}
+          onIndex={() => {}}
+          onClose={() => setZoom(false)}
+        />
       )}
     </div>
   )

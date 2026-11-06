@@ -13,13 +13,18 @@ export default function Setup({ onDone }) {
     e.preventDefault()
     setBusy(true)
     setErr('')
-    const { error } =
-      mode === 'create'
-        ? await supabase.rpc('create_space', { space_name: calName, my_name: name })
-        : await supabase.rpc('join_space', { join_code: code, my_name: name })
-    setBusy(false)
-    if (error) return setErr(error.message)
-    onDone()
+    try {
+      const { error } =
+        mode === 'create'
+          ? await supabase.rpc('create_space', { space_name: calName, my_name: name.trim() })
+          : await supabase.rpc('join_space', { join_code: code.trim(), my_name: name.trim() })
+      if (error) throw error
+      await onDone()
+    } catch (error) {
+      setErr(error.message || 'Could not set up your calendar. Try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -34,10 +39,10 @@ export default function Setup({ onDone }) {
         {mode === 'create' ? (
           <label>Calendar name<input required maxLength={80} value={calName} onChange={(e) => setCalName(e.target.value)} /></label>
         ) : (
-          <label>Invite code<input required value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter invite code" autoCapitalize="none" spellCheck={false} /></label>
+          <label>Invite code<input required maxLength={16} value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter invite code" autoCapitalize="none" spellCheck={false} /></label>
         )}
         {mode === 'create' && <p className="muted small">After creating it, you'll see an invite code to send to the people you want to share it with (up to 6 people).</p>}
-        {err && <p className="error">{err}</p>}
+        {err && <p className="error" role="alert">{err}</p>}
         <button className="btn primary" disabled={busy}>{mode === 'create' ? 'Create calendar' : 'Join calendar'}</button>
         <button type="button" className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
       </form>

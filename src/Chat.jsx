@@ -9,6 +9,7 @@ import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { EMOJI, QUICK } from './emoji.js'
 import { GROUP, preview } from './useChat.js'
+import { validateImageFile } from './photo.js'
 
 const COLORS = ['#f6a9c4', '#e0679a', '#a9ddc2', '#3d9970', '#cdb8f5', '#7c5cd6', '#a8d4f5', '#2f7fd1', '#ffc9a3', '#f2994a', '#f7e3a1', '#2d2832']
 const MAX_PHOTOS = 6
@@ -117,6 +118,8 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
   const [replyTo, setReplyTo] = useState(null)
   const [editing, setEditing] = useState(null)
   const [files, setFiles] = useState([])
+  const filesRef = useRef(files)
+  filesRef.current = files
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [active, setActive] = useState(null)
   const [pickFor, setPickFor] = useState(null)
@@ -205,7 +208,7 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
     return () => document.removeEventListener('visibilitychange', vis)
   }, [markRead])
 
-  useEffect(() => () => files.forEach((f) => URL.revokeObjectURL(f.preview)), []) // eslint-disable-line
+  useEffect(() => () => filesRef.current.forEach((f) => URL.revokeObjectURL(f.preview)), [])
 
   function grow() {
     const t = taRef.current
@@ -264,7 +267,12 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
   function pickFiles(e) {
     const chosen = [...(e.target.files || [])]
     e.target.value = ''
+    const invalid = chosen.find((file) => validateImageFile(file))
+    if (invalid) return setErr(validateImageFile(invalid))
     const room = MAX_PHOTOS - files.length
+    if (!room) return setErr(`You can attach up to ${MAX_PHOTOS} photos.`)
+    if (chosen.length > room) setErr(`Only ${room} more photo${room === 1 ? '' : 's'} can be attached.`)
+    else setErr('')
     setFiles((p) => [...p, ...chosen.slice(0, room).map((file) => ({ file, preview: URL.createObjectURL(file) }))])
   }
 
@@ -542,7 +550,7 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
           </div>
         )}
         {emojiOpen && <EmojiPanel onPick={(e) => { setText((t) => t + e); taRef.current?.focus() }} />}
-        {err && <p className="error" onClick={() => setErr('')}>{err}</p>}
+        {err && <p className="error" role="alert">{err}</p>}
 
         {rec ? (
           <div className="bar rec">
