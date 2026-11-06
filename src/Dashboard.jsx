@@ -6,10 +6,11 @@ import './gallery.css'
 import Avatar from './Avatar.jsx'
 import Lightbox from './Lightbox.jsx'
 import { Composer, PostCard } from './Posts.jsx'
-import { TYPES, clockIn, dateInZone, mapHref, sortEvents, timeLabel, zoneOfCity } from './lib.js'
+import { TYPES, clockIn, dateInZone, eventOriginLabel, mapHref, sortEvents, timeLabel, zoneLabel, zoneOfCity } from './lib.js'
 
-function EventRow({ e, owner, color, showDate, onOpen }) {
+function EventRow({ e, owner, color, showDate, zone, onOpen }) {
   const special = e.type === 'special'
+  const originLabel = eventOriginLabel(e)
   return (
     <div className="drow-wrap">
       <button className={'drow' + (special ? ' special' : '')} onClick={() => onOpen(e)}>
@@ -21,8 +22,9 @@ function EventRow({ e, owner, color, showDate, onOpen }) {
           </strong>
           <small>
             {showDate ? `${format(parseISO(e.date), 'EEE d MMM')} · ` : ''}
-            {timeLabel(e)}
+            {timeLabel(e)}{e.start_time && zone ? ` · ${zoneLabel(zone)} time` : ''}
           </small>
+          {originLabel && <small className="drow-origin">{originLabel}</small>}
         </span>
         {owner && <Avatar url={owner.avatar_url} name={owner.display_name} color={color} />}
       </button>
@@ -148,7 +150,7 @@ export default function Dashboard({
           <div className="ddeadline-list">
             {deadlines.map(({ event: e, secondsUntil }) => (
               <div className="ddeadline-row" key={e.id}>
-                <EventRow e={e} owner={memberById[e.user_id]} color={colorOf(e.user_id)} onOpen={onOpenEvent} />
+                <EventRow e={e} owner={memberById[e.user_id]} color={colorOf(e.user_id)} zone={zone} onOpen={onOpenEvent} />
                 <small>{startsIn(secondsUntil)}</small>
               </div>
             ))}
@@ -162,7 +164,7 @@ export default function Dashboard({
           <div className="dlist">
             {mine.length === 0 && <p className="empty">Nothing planned today.</p>}
             {mine.map((e) => (
-              <EventRow key={e.id} e={e} onOpen={onOpenEvent} />
+              <EventRow key={e.id} e={e} zone={zone} onOpen={onOpenEvent} />
             ))}
           </div>
         </section>
@@ -176,7 +178,7 @@ export default function Dashboard({
               <div className="dlist">
                 {theirs.length === 0 && <p className="empty">Nothing planned today.</p>}
                 {theirs.map((e) => (
-                  <EventRow key={e.id} e={e} onOpen={onOpenEvent} />
+                  <EventRow key={e.id} e={e} zone={zone} onOpen={onOpenEvent} />
                 ))}
               </div>
             </section>

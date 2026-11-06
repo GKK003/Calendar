@@ -94,8 +94,27 @@ export function localizeEvent(ev, tz) {
     date: ymd(addDays(parseISO(ev.date), s.dayShift)),
     start_time: s.time,
     end_time: e ? e.time : null,
-    origin: { tz: ev.tz, start_time: hm(ev.start_time), end_time: hm(ev.end_time) },
+    origin: {
+      tz: ev.tz,
+      date: ev.date,
+      start_time: hm(ev.start_time),
+      end_time: hm(ev.end_time),
+    },
   }
+}
+
+export function eventOriginLabel(ev) {
+  if (!ev?.origin?.date) return null
+  const dayRelation = ev.origin.date < ev.date
+    ? 'previous day'
+    : ev.origin.date > ev.date
+      ? 'next day'
+      : 'same day'
+  const originalTime = timeLabel({
+    start_time: ev.origin.start_time,
+    end_time: ev.origin.end_time,
+  })
+  return `${zoneLabel(ev.origin.tz)}: ${format(parseISO(ev.origin.date), 'EEE, d MMM')} · ${originalTime} (${dayRelation})`
 }
 
 // Colors people can pick for their avatar

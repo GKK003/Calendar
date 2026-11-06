@@ -41,6 +41,7 @@ import {
   AVATARS,
   PALETTE,
   TYPES,
+  eventOriginLabel,
   greeting,
   hm,
   localizeEvent,
@@ -929,16 +930,13 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                             )}
                             {e.origin && (
                               <span className="muted small note">
-                                Set as {e.origin.start_time}
-                                {e.origin.end_time &&
-                                  ` – ${e.origin.end_time}`}{" "}
-                                {zoneLabel(e.origin.tz)}
+                                {eventOriginLabel(e)}
                               </span>
                             )}
                             <span className="meta">
                               <span>
                                 <Clock size={13} /> {timeLabel(e)}
-                                {e.start_time && ` ${zoneLabel(tz)}`}
+                                {e.start_time && ` · ${zoneLabel(tz)} time`}
                               </span>
                             </span>
                           </button>
