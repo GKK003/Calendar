@@ -320,11 +320,11 @@ export default function useChat(space, userId, members) {
 
   async function saveSettings(patch) {
     const next = { ...settings, ...patch }
-    setSettings(next)
     const { error } = await supabase
       .from('chat_settings')
       .upsert({ space_id: space.id, color: next.color, quick_emoji: next.quick_emoji, nicknames: next.nicknames }, { onConflict: 'space_id' })
     if (error) return error.message
+    setSettings(next)
     return null
   }
 

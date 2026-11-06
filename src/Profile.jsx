@@ -167,9 +167,9 @@ export default function Profile({ session, member, others = [], color, onSaved }
 
         <div className="swatch-wrap">
           <span className="lbl">Your color</span>
-          <div className="swatches">
+          <div className="swatches" role="group" aria-label="Profile color">
             {PALETTE.map((c) => (
-              <button type="button" key={c} style={{ background: c }} onClick={() => setCol(c)} aria-label={'Color ' + c}>
+              <button type="button" key={c} style={{ background: c }} onClick={() => setCol(c)} aria-label={'Color ' + c} aria-pressed={col === c}>
                 {col === c && <Check size={16} />}
               </button>
             ))}
@@ -178,9 +178,9 @@ export default function Profile({ session, member, others = [], color, onSaved }
 
         <div className="swatch-wrap">
           <span className="lbl">Where you live</span>
-          <div className="seg tiny">
+          <div className="seg tiny" role="group" aria-label="Your city">
             {CITIES.map((c) => (
-              <button type="button" key={c.id} className={city === c.id ? 'on' : ''} onClick={() => setCity(c.id)}>{c.label}</button>
+              <button type="button" key={c.id} className={city === c.id ? 'on' : ''} aria-pressed={city === c.id} onClick={() => setCity(c.id)}>{c.label}</button>
             ))}
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function Profile({ session, member, others = [], color, onSaved }
         <p className="muted small">{others.length ? `${others.map((o) => o.display_name).join(', ')} can see your status.` : 'Others will see this once they join.'}</p>
 
         {msg && <p className={msg.ok ? 'ok' : 'error'} role={msg.ok ? 'status' : 'alert'} aria-live={msg.ok ? 'polite' : 'assertive'}>{msg.text}</p>}
-        <button className="btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>
+        <button type="submit" className="btn primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>
       </form>
 
       <div className="pside">
@@ -206,11 +206,11 @@ export default function Profile({ session, member, others = [], color, onSaved }
             <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" minLength={6} />
           </label>
           {pwMsg && <p className={pwMsg.ok ? 'ok' : 'error'} role={pwMsg.ok ? 'status' : 'alert'} aria-live={pwMsg.ok ? 'polite' : 'assertive'}>{pwMsg.text}</p>}
-          <button className="btn primary" disabled={pwBusy || !pw}>{pwBusy ? 'Saving…' : 'Change password'}</button>
+          <button type="submit" className="btn primary" disabled={pwBusy || !pw}>{pwBusy ? 'Saving…' : 'Change password'}</button>
         </form>
 
         <div className="card pcard">
-          <button className="btn ghost" onClick={() => supabase.auth.signOut()}><LogOut size={16} /> Sign out</button>
+          <button type="button" className="btn ghost" onClick={() => supabase.auth.signOut()}><LogOut size={16} /> Sign out</button>
         </div>
       </div>
     </div>

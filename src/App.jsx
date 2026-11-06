@@ -10,7 +10,7 @@ function StatusCard({ title, message, onRetry }) {
       <div className="card narrow" role="alert">
         <h1>{title}</h1>
         <p className="muted">{message}</p>
-        <button className="btn primary" onClick={onRetry}>Try again</button>
+        <button type="button" className="btn primary" onClick={onRetry}>Try again</button>
       </div>
     </div>
   )

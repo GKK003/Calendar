@@ -26,7 +26,7 @@ const dayTitle = (d) => (isToday(d) ? 'Today' : isYesterday(d) ? 'Yesterday' : f
 function Linked({ text }) {
   return text.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
     /^https?:\/\//.test(part) ? (
-      <a key={i} href={part} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>{part}</a>
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" aria-label={`Open link in a new tab: ${part}`} onClick={(e) => e.stopPropagation()}>{part}</a>
     ) : (
       part
     ),
@@ -37,10 +37,10 @@ function EmojiPanel({ onPick }) {
   const tabs = Object.keys(EMOJI)
   const [tab, setTab] = useState(tabs[0])
   return (
-    <div className="emoji-panel">
-      <div className="emoji-tabs">
+    <div className="emoji-panel" id="emoji-picker">
+      <div className="emoji-tabs" role="group" aria-label="Emoji category">
         {tabs.map((t) => (
-          <button type="button" key={t} className={t === tab ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>
+          <button type="button" key={t} className={t === tab ? 'on' : ''} aria-pressed={t === tab} onClick={() => setTab(t)}>{t}</button>
         ))}
       </div>
       <div className="emoji-grid">
@@ -234,26 +234,47 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
     if (editing) {
       if (!body) return
       setBusy(true)
-      const problem = editing.body === body ? null : await chat.edit(editing.id, body)
-      setBusy(false)
-      if (problem) return setErr(problem)
-      return reset()
+      setErr('')
+      try {
+        const problem = editing.body === body ? null : await chat.edit(editing.id, body)
+        if (problem) return setErr(problem)
+        reset()
+      } catch (error) {
+        setErr(error.message || 'Could not edit this message.')
+      } finally {
+        setBusy(false)
+      }
+      return
     }
     if (!body && !files.length) return
     setBusy(true)
     setErr('')
     stick.current = true
-    const problem = await chat.send({ body, files: files.map((f) => f.file), replyTo: replyTo?.id || null })
-    setBusy(false)
-    if (problem) return setErr(problem)
-    reset()
+    try {
+      const problem = await chat.send({ body, files: files.map((f) => f.file), replyTo: replyTo?.id || null })
+      if (problem) setErr(problem)
+      else reset()
+    } catch (error) {
+      setErr(error.message || 'Could not send this message.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function sendQuick() {
+    if (busy) return
+    setBusy(true)
+    setErr('')
     stick.current = true
-    const problem = await chat.send({ body: quick, replyTo: replyTo?.id || null })
-    if (problem) setErr(problem)
-    else reset()
+    try {
+      const problem = await chat.send({ body: quick, replyTo: replyTo?.id || null })
+      if (problem) setErr(problem)
+      else reset()
+    } catch (error) {
+      setErr(error.message || 'Could not send the reaction.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   function onKey(e) {
@@ -295,10 +316,15 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
         if (seconds < 1) return
         setBusy(true)
         stick.current = true
-        const problem = await chat.send({ voice: { blob: new Blob(chunks.current, { type: mr.mimeType || 'audio/webm' }), seconds }, replyTo: replyTo?.id || null })
-        setBusy(false)
-        if (problem) setErr(problem)
-        else setReplyTo(null)
+        try {
+          const problem = await chat.send({ voice: { blob: new Blob(chunks.current, { type: mr.mimeType || 'audio/webm' }), seconds }, replyTo: replyTo?.id || null })
+          if (problem) setErr(problem)
+          else setReplyTo(null)
+        } catch (error) {
+          setErr(error.message || 'Could not send this voice message.')
+        } finally {
+          setBusy(false)
+        }
       }
       mr.start()
       recorder.current = mr
@@ -310,7 +336,7 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
   }
   function stopRec(cancel) {
     recCancel.current = cancel
-    recorder.current?.stop()
+    if (recorder.current?.state === 'recording') recorder.current.stop()
   }
   useEffect(() => () => { recCancel.current = true; recorder.current?.state === 'recording' && recorder.current.stop() }, [])
 
@@ -318,14 +344,22 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
   async function doReact(m, emoji) {
     setActive(null)
     setPickFor(null)
-    const p = await chat.react(m.id, emoji)
-    if (p) setErr(p)
+    try {
+      const problem = await chat.react(m.id, emoji)
+      if (problem) setErr(problem)
+    } catch (error) {
+      setErr(error.message || 'Could not save this reaction.')
+    }
   }
   async function unsend(m) {
     setActive(null)
     if (!confirm('Unsend this message for everyone?')) return
-    const p = await chat.unsend(m)
-    if (p) setErr(p)
+    try {
+      const problem = await chat.unsend(m)
+      if (problem) setErr(problem)
+    } catch (error) {
+      setErr(error.message || 'Could not unsend this message.')
+    }
   }
   function startEdit(m) {
     setActive(null)
@@ -346,6 +380,16 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     el.classList.add('flash')
     setTimeout(() => el.classList.remove('flash'), 1400)
+  }
+  async function copyMessage(text) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard access is unavailable.')
+      await navigator.clipboard.writeText(text)
+      setActive(null)
+      setErr('')
+    } catch {
+      setErr('Could not copy this message. Check clipboard access and try again.')
+    }
   }
 
   const title = isGroup ? groupName : peer ? nameOf(peer.user_id) : 'Chat'
@@ -446,7 +490,7 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
               {pickFor === m.id && <EmojiPanel onPick={(e) => doReact(m, e)} />}
               <div className="acts">
                 <button type="button" onClick={() => startReply(m)}><CornerUpLeft size={15} /> Reply</button>
-                {m.body && <button type="button" onClick={() => { navigator.clipboard?.writeText(m.body); setActive(null) }}><Copy size={15} /> Copy</button>}
+                {m.body && <button type="button" onClick={() => copyMessage(m.body)}><Copy size={15} /> Copy</button>}
                 {mine && m.kind === 'text' && <button type="button" onClick={() => startEdit(m)}><Pencil size={15} /> Edit</button>}
                 {mine && <button type="button" className="warn" onClick={() => unsend(m)}><Trash2 size={15} /> Unsend</button>}
               </div>
@@ -477,7 +521,7 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
   return (
     <div className="chat card">
       <header className="chat-head">
-        <button className="icon-btn back" onClick={onBack} aria-label="Back to chats"><ChevronLeft size={20} /></button>
+        <button type="button" className="icon-btn back" onClick={onBack} aria-label="Back to chats"><ChevronLeft size={20} /></button>
         {isGroup
           ? <GroupAvatar size="md" />
           : <Avatar url={peer?.avatar_url} name={title} color={peer ? colorOf(peer.user_id) : undefined} size="md" />}
@@ -487,24 +531,26 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
         </div>
         {!isGroup && (
           <>
-            <button className="icon-btn" disabled={!peer} onClick={() => call.start(false, chatKey)} aria-label="Voice call"><Phone size={17} /></button>
-            <button className="icon-btn" disabled={!peer} onClick={() => call.start(true, chatKey)} aria-label="Video call"><Video size={17} /></button>
+            <button type="button" className="icon-btn" disabled={!peer} onClick={() => call.start(false, chatKey)} aria-label="Voice call"><Phone size={17} /></button>
+            <button type="button" className="icon-btn" disabled={!peer} onClick={() => call.start(true, chatKey)} aria-label="Video call"><Video size={17} /></button>
           </>
         )}
-        <button className={'icon-btn' + (query !== null ? ' lit' : '')} onClick={() => setQuery(query === null ? '' : null)} aria-label="Search in chat"><Search size={17} /></button>
-        <button className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Chat settings"><Settings size={17} /></button>
+        <button type="button" className={'icon-btn' + (query !== null ? ' lit' : '')} onClick={() => setQuery(query === null ? '' : null)} aria-label="Search in chat" aria-expanded={query !== null}><Search size={17} /></button>
+        <button type="button" className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Chat settings" aria-haspopup="dialog" aria-expanded={settingsOpen}><Settings size={17} /></button>
       </header>
 
       {query !== null && (
         <div className="chat-search">
           <Search size={15} />
-          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search in this chat" />
+          <input autoFocus aria-label="Search in this chat" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search in this chat" />
           <button type="button" onClick={() => setQuery(null)} aria-label="Close search"><X size={16} /></button>
         </div>
       )}
 
       {call.error && (
-        <div className="chat-note" onClick={call.clearError}>{call.error} <X size={14} /></div>
+        <button type="button" className="chat-note" onClick={call.clearError} aria-label="Dismiss call error">
+          <span>{call.error}</span><X size={14} aria-hidden="true" />
+        </button>
       )}
 
       <div className="chat-list" ref={listRef} onScroll={onScroll} onClick={() => { setActive(null); setPickFor(null) }}>
@@ -523,7 +569,7 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
       </div>
 
       {!atBottom && (
-        <button className="to-bottom" onClick={toBottom} aria-label="Jump to latest">
+        <button type="button" className="to-bottom" onClick={toBottom} aria-label="Jump to latest">
           <ArrowDown size={18} />{chat.unreadActive > 0 && <b>{chat.unreadActive}</b>}
         </button>
       )}
@@ -578,14 +624,14 @@ function Conversation({ chat, call, push, me, members, chatKey, groupName, onBac
                 onKeyDown={onKey}
                 onFocus={() => setEmojiOpen(false)}
               />
-              <button type="button" className={'tool in' + (emojiOpen ? ' lit' : '')} onClick={() => setEmojiOpen((v) => !v)} aria-label="Emoji"><Smile size={20} /></button>
+              <button type="button" className={'tool in' + (emojiOpen ? ' lit' : '')} onClick={() => setEmojiOpen((v) => !v)} aria-label="Emoji" aria-expanded={emojiOpen} aria-controls={emojiOpen ? 'emoji-picker' : undefined}><Smile size={20} /></button>
             </div>
             {text.trim() || files.length || editing ? (
-              <button className="send-btn" style={{ background: bubbleColor, color: textOn(bubbleColor) }} disabled={busy} aria-label="Send">
+              <button type="submit" className="send-btn" style={{ background: bubbleColor, color: textOn(bubbleColor) }} disabled={busy} aria-label="Send">
                 {editing ? <Check size={18} /> : <Send size={18} />}
               </button>
             ) : (
-              <button type="button" className="quick-btn" onClick={sendQuick} aria-label="Send quick reaction">{quick}</button>
+              <button type="button" className="quick-btn" onClick={sendQuick} disabled={busy} aria-label={`Send quick reaction ${quick}`}>{quick}</button>
             )}
           </div>
         )}
@@ -613,21 +659,73 @@ function Settings_({ chat, push, me, members, memberById, onClose }) {
   const ids = members.map((m) => m.user_id)
   const [nick, setNick] = useState(() => Object.fromEntries(ids.map((id) => [id, settings.nicknames?.[id] || ''])))
   const [err, setErr] = useState('')
+  const [saving, setSaving] = useState(false)
+  const sheetRef = useRef(null)
+  const closeButtonRef = useRef(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
+  useEffect(() => {
+    const previousFocus = document.activeElement
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeButtonRef.current?.focus()
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeRef.current()
+        return
+      }
+      if (event.key !== 'Tab' || !sheetRef.current) return
+      const focusable = [...sheetRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )]
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+      if (previousFocus instanceof HTMLElement) previousFocus.focus()
+    }
+  }, [])
+
   async function save(patch) {
-    const p = await chat.saveSettings(patch)
-    if (p) setErr(p)
+    if (saving) return false
+    setSaving(true)
+    setErr('')
+    try {
+      const problem = await chat.saveSettings(patch)
+      if (problem) throw new Error(problem)
+      return true
+    } catch (error) {
+      setErr(error.message || 'Could not save chat settings.')
+      return false
+    } finally {
+      setSaving(false)
+    }
   }
   async function done() {
     const nicknames = {}
     for (const id of ids) if (nick[id]?.trim()) nicknames[id] = nick[id].trim()
-    await save({ nicknames })
-    onClose()
+    if (await save({ nicknames })) closeRef.current()
   }
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head"><h2>Chat settings</h2><button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button></div>
+      <div ref={sheetRef} className="sheet" role="dialog" aria-modal="true" aria-labelledby="chat-settings-title" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-head"><h2 id="chat-settings-title">Chat settings</h2><button ref={closeButtonRef} type="button" className="icon-btn" onClick={onClose} aria-label="Close settings"><X size={16} /></button></div>
 
         <div className="set-block">
           <strong>Nicknames</strong>
@@ -642,9 +740,9 @@ function Settings_({ chat, push, me, members, memberById, onClose }) {
 
         <div className="set-block">
           <strong>Chat colour</strong>
-          <div className="swatches">
+          <div className="swatches" role="group" aria-label="Chat color">
             {COLORS.map((c) => (
-              <button key={c} type="button" style={{ background: c }} className={(settings.color || '#f6a9c4') === c ? 'on' : ''} onClick={() => save({ color: c })} aria-label={c}>
+              <button key={c} type="button" style={{ background: c }} className={(settings.color || '#f6a9c4') === c ? 'on' : ''} onClick={() => save({ color: c })} aria-label={`Color ${c}`} aria-pressed={(settings.color || '#f6a9c4') === c} disabled={saving}>
                 {(settings.color || '#f6a9c4') === c && <Check size={16} color={textOn(c)} />}
               </button>
             ))}
@@ -654,9 +752,9 @@ function Settings_({ chat, push, me, members, memberById, onClose }) {
         <div className="set-block">
           <strong>Quick reaction</strong>
           <p className="muted small">Sent with one tap when the message box is empty.</p>
-          <div className="quick-pick">
+          <div className="quick-pick" role="group" aria-label="Quick reaction">
             {['👍', '❤️', '😂', '🔥', '😘', '🥰', '😍', '🙏'].map((e) => (
-              <button key={e} type="button" className={(settings.quick_emoji || '👍') === e ? 'on' : ''} onClick={() => save({ quick_emoji: e })}>{e}</button>
+              <button key={e} type="button" className={(settings.quick_emoji || '👍') === e ? 'on' : ''} onClick={() => save({ quick_emoji: e })} aria-label={`Set quick reaction to ${e}`} aria-pressed={(settings.quick_emoji || '👍') === e} disabled={saving}>{e}</button>
             ))}
           </div>
         </div>
@@ -667,20 +765,20 @@ function Settings_({ chat, push, me, members, memberById, onClose }) {
             {push.state === 'on' && (
               <>
                 <p className="muted small"><Bell size={13} /> On for this phone. You get messages and ringing calls even when the app is closed.</p>
-                <button type="button" className="btn ghost" onClick={push.disable}>Turn off</button>
+                <button type="button" className="btn ghost" disabled={push.busy} onClick={push.disable}>{push.busy ? 'Turning off…' : 'Turn off'}</button>
               </>
             )}
             {push.state === 'off' && (
-              <button type="button" className="btn ghost" onClick={push.enable}>Turn on notifications</button>
+              <button type="button" className="btn ghost" disabled={push.busy} onClick={push.enable}>{push.busy ? 'Turning on…' : 'Turn on notifications'}</button>
             )}
             {push.state === 'install' && <p className="muted small">On iPhone, first add the site to your Home Screen and open it from there.</p>}
             {push.state === 'denied' && <p className="muted small">Notifications are blocked. Allow them for this app in your phone settings.</p>}
-            {push.err && <p className="error">{push.err}</p>}
+            {push.err && <p className="error" role="alert">{push.err}</p>}
           </div>
         )}
 
-        {err && <p className="error">{err}</p>}
-        <button className="btn primary" onClick={done}>Done</button>
+        {err && <p className="error" role="alert">{err}</p>}
+        <button type="button" className="btn primary" onClick={done} disabled={saving}>{saving ? 'Saving…' : 'Done'}</button>
       </div>
     </div>
   )
@@ -731,7 +829,7 @@ function ChatList({ chat, push, me, members, memberById, colorOf, groupName }) {
     <div className="chat card chat-hub">
       <header className="hub-head">
         <h2>Chats</h2>
-        <button className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Chat settings"><Settings size={17} /></button>
+        <button type="button" className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Chat settings" aria-haspopup="dialog" aria-expanded={settingsOpen}><Settings size={17} /></button>
       </header>
       <label className="hub-search">
         <Search size={16} />
@@ -739,7 +837,7 @@ function ChatList({ chat, push, me, members, memberById, colorOf, groupName }) {
       </label>
       <div className="hub-list">
         {items.map((c) => (
-          <button key={c.key} className={'crow' + (c.unread ? ' unread' : '')} onClick={() => chat.openChat(c.key)}>
+          <button type="button" key={c.key} className={'crow' + (c.unread ? ' unread' : '')} onClick={() => chat.openChat(c.key)}>
             <span className="crow-av">
               {c.isGroup
                 ? <GroupAvatar size="md" />

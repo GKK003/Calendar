@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronRight, Copy, UsersRound } from 'lucide-react'
 import Avatar from './Avatar.jsx'
 import { zoneLabel, zoneOfCity } from './lib.js'
@@ -6,17 +6,28 @@ import './circle.css'
 
 export default function CirclePage({ space, me, members, colorOf, onEditProfile, onOpenPerson }) {
   const [copied, setCopied] = useState(false)
+  const [copying, setCopying] = useState(false)
   const [copyError, setCopyError] = useState('')
+  const copyTimer = useRef(null)
+
+  useEffect(() => () => clearTimeout(copyTimer.current), [])
 
   async function copyCode() {
+    if (copying) return
+    setCopying(true)
+    setCopied(false)
+    setCopyError('')
     try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard access is unavailable.')
       await navigator.clipboard.writeText(space.code)
       setCopied(true)
-      setCopyError('')
-      setTimeout(() => setCopied(false), 1800)
+      clearTimeout(copyTimer.current)
+      copyTimer.current = setTimeout(() => setCopied(false), 1800)
     } catch {
       setCopied(false)
       setCopyError('Could not copy automatically. You can select and copy the code.')
+    } finally {
+      setCopying(false)
     }
   }
 
@@ -38,7 +49,7 @@ export default function CirclePage({ space, me, members, colorOf, onEditProfile,
           <h2>{me.display_name}</h2>
           <p className="muted">{me.about || `${zoneLabel(zoneOfCity(me.city))} time`}</p>
         </div>
-        <button className="btn ghost circle-edit-profile" onClick={onEditProfile}>Edit profile</button>
+        <button type="button" className="btn ghost circle-edit-profile" onClick={onEditProfile}>Edit profile</button>
       </section>
 
       <section className="card circle-invite-card">
@@ -49,11 +60,12 @@ export default function CirclePage({ space, me, members, colorOf, onEditProfile,
         </div>
         <div className="circle-code-wrap">
           <code className="circle-code">{space.code}</code>
-          <button className="btn primary circle-copy" onClick={copyCode}>
+          <button type="button" className="btn primary circle-copy" onClick={copyCode} disabled={copying}>
             {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? 'Copied' : 'Copy code'}
+            {copying ? 'Copying…' : copied ? 'Copied' : 'Copy code'}
           </button>
-          {copyError && <small className="circle-copy-error" role="status">{copyError}</small>}
+          {copied && <small className="sr-only" role="status">Invite code copied.</small>}
+          {copyError && <small className="circle-copy-error" role="alert">{copyError}</small>}
         </div>
       </section>
 

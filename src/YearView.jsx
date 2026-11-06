@@ -10,7 +10,7 @@ export default function YearView({ year, byDate, onPick }) {
         const lead = (getDay(m) + 6) % 7 // Monday-first
         return (
           <div className="mini" key={m.getMonth()}>
-            <button className="mini-title" onClick={() => onPick(m)}>{format(m, 'MMMM')}</button>
+            <button type="button" className="mini-title" onClick={() => onPick(m)}>{format(m, 'MMMM')}</button>
             <div className="mini-grid">
               {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} className="dow">{d}</span>)}
               {Array.from({ length: lead }).map((_, i) => <span key={'l' + i} />)}
@@ -19,7 +19,7 @@ export default function YearView({ year, byDate, onPick }) {
                 const n = list.length
                 const special = list.some((e) => e.type === 'special')
                 return (
-                  <button key={d} className={'md' + (n ? ' has' : '') + (n > 2 ? ' busy' : '') + (special ? ' special' : '') + (isToday(d) ? ' today' : '')} onClick={() => onPick(d)}>
+                  <button type="button" key={d} className={'md' + (n ? ' has' : '') + (n > 2 ? ' busy' : '') + (special ? ' special' : '') + (isToday(d) ? ' today' : '')} onClick={() => onPick(d)}>
                     {d.getDate()}
                   </button>
                 )

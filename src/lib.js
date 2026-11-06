@@ -142,7 +142,19 @@ export const PALETTE = ['#f6a9c4', '#a9ddc2', '#cdb8f5', '#ffc9a3', '#a8d4f5', '
 export function mapHref(place) {
   const t = (place || '').trim()
   if (!t) return null
-  if (/^https?:\/\//i.test(t)) return t
-  if (/^(www\.|maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google|google\.[a-z.]+\/maps|maps\.apple\.com)/i.test(t)) return 'https://' + t
+  let candidate = ''
+  if (/^https?:\/\//i.test(t)) candidate = t
+  else if (/^(www\.|maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google|google\.[a-z.]+\/maps|maps\.apple\.com)/i.test(t)) candidate = 'https://' + t
+  if (candidate) {
+    try {
+      const url = new URL(candidate)
+      if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) return null
+      // Map destinations should never send a user's address over plain HTTP.
+      if (url.protocol === 'http:') url.protocol = 'https:'
+      return url.toString()
+    } catch {
+      return null
+    }
+  }
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(t)
 }

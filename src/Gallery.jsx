@@ -34,11 +34,11 @@ export default function Gallery({ shots, urls, me, others, memberById }) {
           </p>
         </div>
         {others.length > 0 && (
-          <div className="seg tiny">
-            <button className={who === 'all' ? 'on' : ''} onClick={() => setWho('all')}>Everyone</button>
-            <button className={who === me.user_id ? 'on' : ''} onClick={() => setWho(me.user_id)}>Me</button>
+          <div className="seg tiny" role="group" aria-label="Filter gallery by person">
+            <button type="button" className={who === 'all' ? 'on' : ''} aria-pressed={who === 'all'} onClick={() => setWho('all')}>Everyone</button>
+            <button type="button" className={who === me.user_id ? 'on' : ''} aria-pressed={who === me.user_id} onClick={() => setWho(me.user_id)}>Me</button>
             {others.map((o) => (
-              <button key={o.user_id} className={who === o.user_id ? 'on' : ''} onClick={() => setWho(o.user_id)}>
+              <button type="button" key={o.user_id} className={who === o.user_id ? 'on' : ''} aria-pressed={who === o.user_id} onClick={() => setWho(o.user_id)}>
                 {o.display_name}
               </button>
             ))}
@@ -53,11 +53,11 @@ export default function Gallery({ shots, urls, me, others, memberById }) {
           <h3 className="day-title">{m.title}</h3>
           <div className="ggrid">
             {m.items.map((s) => (
-              <button
+              <button type="button"
                 key={s.path}
                 className="gthumb"
                 onClick={() => setOpen(indexOf.get(s.path))}
-                aria-label="Open photo"
+                aria-label={`Open photo from ${caption(s)}`}
               >
                 <img src={urls[s.path]} alt="" loading="lazy" />
                 <span>{format(parseISO(s.created_at), 'd MMM')}</span>

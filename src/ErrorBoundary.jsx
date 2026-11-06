@@ -18,7 +18,7 @@ export default class ErrorBoundary extends Component {
           <div className="card narrow" role="alert">
             <h1>Something went wrong</h1>
             <p className="muted">The page hit an unexpected error. Reload to try again.</p>
-            <button className="btn primary" onClick={() => window.location.reload()}>Reload page</button>
+            <button type="button" className="btn primary" onClick={() => window.location.reload()}>Reload page</button>
           </div>
         </div>
       )

@@ -513,6 +513,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div
         className={
           "shell" + (view === "chat" || view === "games" ? " chat-mode" : "")
@@ -534,10 +535,10 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         {view === "today" && !menuOpen && (
           <div className="today-right-clocks"><Clocks tz={tz} /></div>
         )}
-        {menuOpen && <button className="brutal-menu-scrim" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}
+        {menuOpen && <button type="button" className="brutal-menu-scrim" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />}
         <nav id="main-navigation" className={`rail${menuOpen ? " menu-open" : ""}`} onClick={() => setMenuOpen(false)} aria-label="Main navigation">
           <div className="logo">S</div>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "today" ? " on" : "")}
             aria-current={view === "today" ? "page" : undefined}
             onClick={() => setView("today")}
@@ -549,7 +550,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             </span>
             <span>Today</span>
           </button>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "month" ? " on" : "")}
             aria-current={view === "month" ? "page" : undefined}
             onClick={() => setView("month")}
@@ -558,7 +559,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <CalendarDays size={20} />
             <span>Month</span>
           </button>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "year" ? " on" : "")}
             aria-current={view === "year" ? "page" : undefined}
             onClick={() => setView("year")}
@@ -567,7 +568,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <LayoutGrid size={20} />
             <span>Year</span>
           </button>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "gallery" ? " on" : "")}
             aria-current={view === "gallery" ? "page" : undefined}
             onClick={() => setView("gallery")}
@@ -576,7 +577,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <Images size={20} />
             <span>Gallery</span>
           </button>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "games" ? " on" : "")}
             aria-current={view === "games" ? "page" : undefined}
             onClick={() => setView("games")}
@@ -585,7 +586,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <Gamepad2 size={20} />
             <span>Games</span>
           </button>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "chat" ? " on" : "")}
             aria-current={view === "chat" ? "page" : undefined}
             onClick={() => {
@@ -600,7 +601,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             </span>
             <span>Chat</span>
           </button>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "profile" ? " on" : "")}
             aria-current={view === "profile" ? "page" : undefined}
             onClick={() => setView("profile")}
@@ -609,7 +610,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <User size={20} />
             <span>Profile</span>
           </button>
-          <button
+          <button type="button"
             className={"rail-btn" + (view === "circle" ? " on" : "")}
             aria-current={view === "circle" ? "page" : undefined}
             onClick={() => setView("circle")}
@@ -619,7 +620,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <span>Circle</span>
           </button>
 
-          <button
+          <button type="button"
             className="rail-btn"
             onClick={() => confirm("Sign out?") && supabase.auth.signOut()}
             aria-label="Sign out"
@@ -629,23 +630,23 @@ export default function Calendar({ session, member, space, onProfileChange }) {
           </button>
         </nav>
 
-        <main className={"main" + (view === "today" ? " today-main" : view === "circle" ? " circle-main" : "")}>
+        <main id="main-content" tabIndex={-1} className={"main" + (view === "today" ? " today-main" : view === "circle" ? " circle-main" : "")}>
           {eventsError && (
             <div className="data-alert" role="alert">
               <span>Events could not be refreshed: {eventsError}</span>
-              <button className="btn ghost sm" onClick={load}>Retry</button>
+              <button type="button" className="btn ghost sm" onClick={load}>Retry</button>
             </div>
           )}
           {membersError && (
             <div className="data-alert" role="alert">
               <span>Calendar members could not be refreshed: {membersError}</span>
-              <button className="btn ghost sm" onClick={loadMembers}>Retry</button>
+              <button type="button" className="btn ghost sm" onClick={loadMembers}>Retry</button>
             </div>
           )}
           {postsApi.error && (
             <div className="data-alert" role="alert">
               <span>Posts or photos could not be refreshed: {postsApi.error}</span>
-              <button className="btn ghost sm" onClick={postsApi.reload}>Retry</button>
+              <button type="button" className="btn ghost sm" onClick={postsApi.reload}>Retry</button>
             </div>
           )}
           {eventsLoading && events.length === 0 && <p className="load-status" role="status">Loading events…</p>}
@@ -669,7 +670,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         {others.map((o, i) => (
                           <span key={o.user_id}>
                             {i > 0 && (i === others.length - 1 ? " and " : ", ")}
-                            <button className="linklike" onClick={() => openPerson(o.user_id)}>
+                            <button type="button" className="linklike" onClick={() => openPerson(o.user_id)}>
                               {o.display_name}
                             </button>
                           </span>
@@ -708,10 +709,11 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                   Get notified about messages and calls, even when the app is
                   closed.
                 </span>
-                <button className="btn primary sm" onClick={push.enable}>
-                  Turn on
+                <button type="button" className="btn primary sm" onClick={push.enable} disabled={push.busy}>
+                  {push.busy ? "Turning on…" : "Turn on"}
                 </button>
                 <button
+                  type="button"
                   className="link"
                   onClick={() => {
                     writeStoredValue("push-banner-hidden", "1");
@@ -720,6 +722,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                 >
                   Not now
                 </button>
+                {push.err && <span className="error" role="alert">{push.err}</span>}
               </div>
             )}
 
@@ -773,16 +776,18 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <>
               {others.length > 0 && (
                 <div className="seg ptabs">
-                  <button
+                  <button type="button"
                     className={profileTab === "me" ? "on" : ""}
+                    aria-pressed={profileTab === "me"}
                     onClick={() => setProfileTab("me")}
                   >
                     Me
                   </button>
                   {others.map((o) => (
-                    <button
+                    <button type="button"
                       key={o.user_id}
                       className={profileTab === o.user_id ? "on" : ""}
+                      aria-pressed={profileTab === o.user_id}
                       onClick={() => openPerson(o.user_id)}
                     >
                       {o.display_name}
@@ -811,10 +816,11 @@ export default function Calendar({ session, member, space, onProfileChange }) {
             <>
               <div className="filters">
                 {Object.entries(TYPES).map(([k, t]) => (
-                  <button
+                  <button type="button"
                     key={k}
                     className={"chip" + (types.has(k) ? " on" : "")}
                     style={{ "--c": t.color }}
+                    aria-pressed={types.has(k)}
                     onClick={() => toggleType(k)}
                   >
                     <i /> {t.label}
@@ -822,22 +828,25 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                 ))}
                 {others.length > 0 && (
                   <div className="seg tiny">
-                    <button
+                    <button type="button"
                       className={who === "all" ? "on" : ""}
+                      aria-pressed={who === "all"}
                       onClick={() => setWho("all")}
                     >
                       Everyone
                     </button>
-                    <button
+                    <button type="button"
                       className={who === member.user_id ? "on" : ""}
+                      aria-pressed={who === member.user_id}
                       onClick={() => setWho(member.user_id)}
                     >
                       Me
                     </button>
                     {others.map((o) => (
-                      <button
+                      <button type="button"
                         key={o.user_id}
                         className={who === o.user_id ? "on" : ""}
+                        aria-pressed={who === o.user_id}
                         onClick={() => setWho(o.user_id)}
                       >
                         {o.display_name}
@@ -861,20 +870,20 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                       )}
                     </h2>
                     <div className="nav">
-                      <button className="btn ghost" onClick={today}>
+                      <button type="button" className="btn ghost" onClick={today}>
                         Today
                       </button>
-                      <button
+                      <button type="button"
                         className="icon-btn"
                         onClick={() => go(-1)}
-                        aria-label="Previous"
+                        aria-label={`Previous ${view === "year" ? "year" : "month"}`}
                       >
                         <ChevronLeft size={18} />
                       </button>
-                      <button
+                      <button type="button"
                         className="icon-btn"
                         onClick={() => go(1)}
-                        aria-label="Next"
+                        aria-label={`Next ${view === "year" ? "year" : "month"}`}
                       >
                         <ChevronRight size={18} />
                       </button>
@@ -905,7 +914,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                             (e) => e.type === "special",
                           );
                           return (
-                            <button
+                            <button type="button"
                               key={k}
                               aria-label={`${format(d, "EEEE, d MMMM yyyy")}${list.length ? `, ${list.length} events` : ", no events"}`}
                               aria-pressed={k === selected}
@@ -965,7 +974,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         {format(selDate, "d MMMM yyyy")}
                       </p>
                     </div>
-                    <button
+                    <button type="button"
                       className="btn primary sm desk-only"
                       onClick={() => openNew()}
                     >
@@ -999,7 +1008,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                             "ev-card" + (e.type === "special" ? " special" : "")
                           }
                         >
-                          <button
+                          <button type="button"
                             className="ev"
                             onClick={() =>
                               setForm({ initial: e, editing: true })
@@ -1036,8 +1045,10 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                               href={mapHref(e.place)}
                               target="_blank"
                               rel="noopener noreferrer"
+                              aria-label={`Open map for ${e.title}; opens in a new tab`}
+                              title="Opens in a new tab"
                             >
-                              <MapPin size={16} /> Open map
+                              <MapPin size={16} aria-hidden="true" /> Open map
                             </a>
                           )}
                         </div>
@@ -1059,7 +1070,7 @@ export default function Calendar({ session, member, space, onProfileChange }) {
         view !== "chat" &&
         view !== "games" &&
         view !== "circle" && (
-          <button
+          <button type="button"
             className="fab"
             onClick={() =>
               openNew(view === "today" ? todayKey : selected)

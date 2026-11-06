@@ -25,6 +25,7 @@ function initial() {
 export default function usePush(space, userId) {
   const [state, setState] = useState(initial)
   const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const save = useCallback(
     async (sub) => {
@@ -59,6 +60,8 @@ export default function usePush(space, userId) {
   }, [save])
 
   async function enable() {
+    if (busy) return
+    setBusy(true)
     setErr('')
     try {
       const perm = await Notification.requestPermission()
@@ -71,22 +74,30 @@ export default function usePush(space, userId) {
       setState('on')
     } catch (e) {
       setErr(e.message || 'Could not turn on notifications.')
+    } finally {
+      setBusy(false)
     }
   }
 
   async function disable() {
+    if (busy) return
+    setBusy(true)
+    setErr('')
     try {
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.getSubscription()
       if (sub) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        if (error) throw error
         await sub.unsubscribe()
       }
-    } catch {
-      /* ignore */
+      setState(Notification.permission === 'denied' ? 'denied' : 'off')
+    } catch (e) {
+      setErr(e.message || 'Could not turn off notifications. Try again.')
+    } finally {
+      setBusy(false)
     }
-    setState(Notification.permission === 'denied' ? 'denied' : 'off')
   }
 
-  return { state, err, enable, disable }
+  return { state, err, busy, enable, disable }
 }

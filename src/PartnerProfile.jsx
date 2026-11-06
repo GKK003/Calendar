@@ -68,7 +68,7 @@ export default function PartnerProfile({ partner, color, tz }) {
     <div className="profile">
       <div className="card pcard pcenter">
         {partner.avatar_url ? (
-          <button className="zoom-btn" onClick={() => setZoom(true)} aria-label="View photo">
+          <button type="button" className="zoom-btn" onClick={() => setZoom(true)} aria-label="View photo">
             <Avatar url={partner.avatar_url} name={partner.display_name} color={color} size="xl" />
           </button>
         ) : (
@@ -85,7 +85,7 @@ export default function PartnerProfile({ partner, color, tz }) {
         ) : listError ? (
           <div className="data-alert" role="alert">
             <span>Could not load events: {listError}</span>
-            <button className="btn ghost sm" onClick={() => setReload((n) => n + 1)}>Retry</button>
+            <button type="button" className="btn ghost sm" onClick={() => setReload((n) => n + 1)}>Retry</button>
           </div>
         ) : (
           <>

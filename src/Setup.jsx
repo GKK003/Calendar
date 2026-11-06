@@ -31,9 +31,9 @@ export default function Setup({ onDone }) {
     <div className="center">
       <form className="card narrow" onSubmit={submit}>
         <h1>Set up your calendar</h1>
-        <div className="seg">
-          <button type="button" className={mode === 'create' ? 'on' : ''} onClick={() => setMode('create')}>Start new</button>
-          <button type="button" className={mode === 'join' ? 'on' : ''} onClick={() => setMode('join')}>Join with code</button>
+        <div className="seg" role="group" aria-label="Calendar setup type">
+          <button type="button" className={mode === 'create' ? 'on' : ''} aria-pressed={mode === 'create'} onClick={() => setMode('create')}>Start new</button>
+          <button type="button" className={mode === 'join' ? 'on' : ''} aria-pressed={mode === 'join'} onClick={() => setMode('join')}>Join with code</button>
         </div>
         <label>Your name<input required maxLength={30} value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex" /></label>
         {mode === 'create' ? (
@@ -43,7 +43,7 @@ export default function Setup({ onDone }) {
         )}
         {mode === 'create' && <p className="muted small">After creating it, you'll see an invite code to send to the people you want to share it with (up to 6 people).</p>}
         {err && <p className="error" role="alert">{err}</p>}
-        <button className="btn primary" disabled={busy}>{mode === 'create' ? 'Create calendar' : 'Join calendar'}</button>
+        <button type="submit" className="btn primary" disabled={busy}>{mode === 'create' ? 'Create calendar' : 'Join calendar'}</button>
         <button type="button" className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
       </form>
     </div>

@@ -13,7 +13,7 @@ function EventRow({ e, owner, color, showDate, zone, onOpen }) {
   const originLabel = eventOriginLabel(e)
   return (
     <div className="drow-wrap">
-      <button className={'drow' + (special ? ' special' : '')} onClick={() => onOpen(e)}>
+      <button type="button" className={'drow' + (special ? ' special' : '')} onClick={() => onOpen(e)}>
         <i style={{ background: TYPES[e.type].color }} />
         <span className="drow-main">
           <strong>
@@ -34,9 +34,10 @@ function EventRow({ e, owner, color, showDate, zone, onOpen }) {
           href={mapHref(e.place)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`Open map for ${e.title}`}
+          aria-label={`Open map for ${e.title}; opens in a new tab`}
+          title="Opens in a new tab"
         >
-          <MapPin size={14} /> <span>Open map</span>
+          <MapPin size={14} aria-hidden="true" /> <span>Open map</span>
         </a>
       )}
     </div>
@@ -142,13 +143,13 @@ export default function Dashboard({
             {todayLabel} · {dayStatus}
           </p>
           <div className="dhero-actions">
-            <button className="btn primary sm" onClick={() => onNewEvent()}>
+            <button type="button" className="btn primary sm" onClick={() => onNewEvent()}>
               <Plus size={16} /> Add event
             </button>
-            <button className="btn ghost sm" onClick={newPost}>
+            <button type="button" className="btn ghost sm" onClick={newPost}>
               <MessageCircle size={16} /> New post
             </button>
-            <button className="btn ghost sm" onClick={onOpenCalendar}>
+            <button type="button" className="btn ghost sm" onClick={onOpenCalendar}>
               <CalendarDays size={16} /> Calendar
             </button>
           </div>

@@ -209,13 +209,14 @@ export default function EventForm({
           />
         </label>
 
-        <div className="chips">
+        <div className="chips" role="group" aria-label="Event type">
           {Object.entries(TYPES).map(([k, t]) => (
             <button
               type="button"
               key={k}
               className={"chip" + (f.type === k ? " on" : "")}
               style={{ "--c": t.color }}
+              aria-pressed={f.type === k}
               onClick={() =>
                 setF((p) => ({
                   ...p,
@@ -268,12 +269,13 @@ export default function EventForm({
             <>
               <div className="tz-row">
                 <span className="small muted">Times above are in</span>
-                <div className="seg tiny">
+                <div className="seg tiny" role="group" aria-label="Time zone for this event">
                   {ZONES.map((z) => (
                     <button
                       type="button"
                       key={z.id}
                       className={zone === z.id ? "on" : ""}
+                      aria-pressed={zone === z.id}
                       onClick={() => set("zone", z.id)}
                     >
                       {z.label}
@@ -350,12 +352,13 @@ export default function EventForm({
         {!editing && f.type !== "special" && (
           <div className="repeat">
             <span className="lbl">Repeat on</span>
-            <div className="wd">
+            <div className="wd" role="group" aria-label="Repeat on weekdays">
               {WEEKDAYS.map(([label, n]) => (
                 <button
                   type="button"
                   key={n}
                   className={f.repeatDays.includes(n) ? "on" : ""}
+                  aria-pressed={f.repeatDays.includes(n)}
                   onClick={() => toggleDay(n)}
                 >
                   {label}
@@ -364,7 +367,7 @@ export default function EventForm({
             </div>
             {f.repeatDays.length > 0 ? (
               <>
-              <div className="seg tiny">
+              <div className="seg tiny" role="group" aria-label="Repeat frequency">
                 {[
                   [1, "Every week"],
                   [2, "Every 2 weeks"],
@@ -373,6 +376,7 @@ export default function EventForm({
                     type="button"
                     key={n}
                     className={f.repeatEvery === n ? "on" : ""}
+                    aria-pressed={f.repeatEvery === n}
                     onClick={() => set("repeatEvery", n)}
                   >
                     {label}
@@ -404,10 +408,11 @@ export default function EventForm({
         {editing && initial.series_id && (
           <div className="repeat">
             <span className="lbl">Part of a repeating series. Apply changes to</span>
-            <div className="seg tiny">
+            <div className="seg tiny" role="group" aria-label="Choose which repeating events to change">
               <button
                 type="button"
                 className={f.applyAll ? "on" : ""}
+                aria-pressed={f.applyAll}
                 onClick={() => set("applyAll", true)}
               >
                 All events
@@ -415,6 +420,7 @@ export default function EventForm({
               <button
                 type="button"
                 className={f.applyAll ? "" : "on"}
+                aria-pressed={!f.applyAll}
                 onClick={() => set("applyAll", false)}
               >
                 This event only
@@ -448,7 +454,7 @@ export default function EventForm({
               <Trash2 size={16} /> Delete all
             </button>
           )}
-          <button className="btn primary" disabled={busy}>
+          <button type="submit" className="btn primary" disabled={busy}>
             {busy ? "Saving…" : "Save"}
           </button>
         </div>

@@ -80,12 +80,13 @@ export function Composer({ me, color, onPost }) {
 
       <div className="ck-row">
         <span className="lbl">Check in</span>
-        <div className="ck-chips">
+        <div className="ck-chips" role="group" aria-label="Choose a check-in">
           {CHECKINS.map((c) => (
             <button
               type="button"
               key={c}
               className={'ck-chip' + (checkin === c ? ' on' : '')}
+              aria-pressed={checkin === c}
               onClick={() => setCheckin(checkin === c ? null : c)}
             >
               {c}
@@ -129,7 +130,7 @@ export function Composer({ me, color, onPost }) {
         >
           <Camera size={16} /> Photos {files.length > 0 && `(${files.length}/${MAX_PHOTOS})`}
         </button>
-        <button className="btn primary" disabled={busy}>
+        <button type="submit" className="btn primary" disabled={busy}>
           {busy ? 'Posting…' : 'Post'}
         </button>
       </div>
@@ -175,7 +176,7 @@ export function PostCard({ post, owner, color, replies, urls, me, memberById, co
           <small className="muted" title={new Date(post.created_at).toLocaleString()}>{ago(post.created_at)}</small>
         </div>
         {mine && (
-          <button className="icon-btn" onClick={remove} aria-label="Delete post">
+          <button type="button" className="icon-btn" onClick={remove} aria-label="Delete post">
             <Trash2 size={16} />
           </button>
         )}
@@ -188,7 +189,7 @@ export function PostCard({ post, owner, color, replies, urls, me, memberById, co
             <>
               {' · '}
               {href ? (
-                <a href={href} target="_blank" rel="noopener noreferrer">{post.place}</a>
+                <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open map for ${post.place}; opens in a new tab`} title="Opens in a new tab">{post.place}</a>
               ) : (
                 post.place
               )}
@@ -202,7 +203,7 @@ export function PostCard({ post, owner, color, replies, urls, me, memberById, co
       {photos.length > 0 && (
         <div className={'pgrid n' + photos.length}>
           {photos.map((u, i) => (
-            <button
+            <button type="button"
               key={u}
               onClick={() =>
                 onZoom(
@@ -229,7 +230,7 @@ export function PostCard({ post, owner, color, replies, urls, me, memberById, co
                   <strong>{who?.display_name || 'Someone'}</strong>
                   <small className="muted">{ago(r.created_at)}</small>
                   {r.user_id === me.user_id && (
-                    <button className="reply-del" onClick={() => removeReply(r.id)} aria-label="Delete reply">
+                    <button type="button" className="reply-del" onClick={() => removeReply(r.id)} aria-label="Delete reply">
                       <X size={13} />
                     </button>
                   )}
@@ -246,7 +247,7 @@ export function PostCard({ post, owner, color, replies, urls, me, memberById, co
             placeholder="Write a reply"
             maxLength={500}
           />
-          <button className="icon-btn send" disabled={busy || !text.trim()} aria-label="Send reply">
+          <button type="submit" className="icon-btn send" disabled={busy || !text.trim()} aria-label="Send reply">
             <Send size={16} />
           </button>
         </form>

@@ -174,7 +174,7 @@
   align-self: center;
   gap: 4px;
   padding: 0 8px;
-  min-height: 32px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--green-soft);

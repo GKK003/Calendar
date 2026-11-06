@@ -60,13 +60,15 @@
 }
 .chat-note {
   display: flex;
+  width: 100%;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 8px 16px;
   background: #fde4e8;
   color: #c23b55;
   font-size: 14px;
-  cursor: pointer;
+  text-align: left;
 }
 
 .chat-list {
@@ -239,8 +241,9 @@
   box-shadow: 0 6px 20px rgba(70, 45, 60, 0.14);
 }
 .quick button {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
   font-size: 20px;
   border-radius: 50%;
 }
@@ -254,6 +257,7 @@
 }
 .acts button {
   display: inline-flex;
+  min-height: 40px;
   align-items: center;
   gap: 5px;
   padding: 5px 11px;
@@ -553,6 +557,7 @@
 }
 .emoji-tabs button {
   flex: 1;
+  min-height: 40px;
   padding: 7px 0;
   font-size: 18px;
   opacity: 0.55;
@@ -570,6 +575,7 @@
   overflow-y: auto;
 }
 .emoji-grid button {
+  min-height: 40px;
   font-size: 22px;
   padding: 3px 0;
   border-radius: 8px;
@@ -610,8 +616,9 @@
   gap: 8px;
 }
 .swatches button {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -622,8 +629,9 @@
   box-shadow: 0 0 0 2px var(--pink-deep);
 }
 .quick-pick button {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
   font-size: 22px;
   border-radius: 12px;
   border: 1px solid var(--line);

@@ -11,6 +11,10 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const step = (d) => onIndex((index + d + items.length) % items.length);
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  const manyRef = useRef(many);
+  manyRef.current = many;
 
   useEffect(() => {
     const previousFocus = document.activeElement;
@@ -18,9 +22,13 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
     document.body.style.overflow = "hidden";
     closeButton.current?.focus();
     function key(e) {
-      if (e.key === "Escape") closeRef.current();
-      else if (many && e.key === "ArrowLeft") step(-1);
-      else if (many && e.key === "ArrowRight") step(1);
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeRef.current();
+      } else if (manyRef.current && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        e.preventDefault();
+        stepRef.current(e.key === "ArrowLeft" ? -1 : 1);
+      }
       else if (e.key === "Tab") {
         const focusable = dialogRef.current?.querySelectorAll('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
         if (!focusable?.length) return;
@@ -41,16 +49,16 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
       document.body.style.overflow = previousOverflow;
       if (previousFocus instanceof HTMLElement) previousFocus.focus();
     };
-  }, [index, items.length, many]);
+  }, []);
 
   if (!item) return null;
   return (
     <div ref={dialogRef} className="lb" role="dialog" aria-modal="true" aria-label={item.caption || "Photo viewer"} tabIndex={-1} onClick={onClose}>
-      <button ref={closeButton} className="lb-btn lb-close" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close photo viewer">
+      <button type="button" ref={closeButton} className="lb-btn lb-close" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close photo viewer">
         <X size={22} />
       </button>
       {many && (
-        <button
+        <button type="button"
           className="lb-btn lb-prev"
           onClick={(e) => {
             e.stopPropagation();
@@ -76,7 +84,7 @@ export default function Lightbox({ items, index, onIndex, onClose }) {
         )}
       </figure>
       {many && (
-        <button
+        <button type="button"
           className="lb-btn lb-next"
           onClick={(e) => {
             e.stopPropagation();
