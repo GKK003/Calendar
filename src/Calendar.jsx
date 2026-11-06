@@ -246,6 +246,12 @@ export default function Calendar({ session, member, space, onProfileChange }) {
   );
 
   const dayEvents = byDate[selected] || [];
+  const dayGroups = [...new Set(dayEvents.map((event) => event.user_id))]
+    .sort((a, b) => a === member.user_id ? -1 : b === member.user_id ? 1 : 0)
+    .map((userId) => ({
+      person: memberById[userId] || { user_id: userId, display_name: "Member" },
+      events: dayEvents.filter((event) => event.user_id === userId),
+    }));
   const selDate = parseISO(selected);
 
   function pick(d) {
@@ -882,9 +888,20 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                         Nothing planned. Tap + to add something.
                       </p>
                     )}
-                    {dayEvents.map((e) => {
-                      const owner = memberById[e.user_id];
-                      return (
+                    {dayGroups.map(({ person, events: personEvents }) => (
+                      <section className="month-event-group" key={person.user_id}>
+                        <div className="month-event-group-head">
+                          <Avatar
+                            url={person.avatar_url}
+                            name={person.display_name}
+                            color={colorOf(person.user_id)}
+                            size="sm"
+                          />
+                          <strong>{person.user_id === member.user_id ? "Your day" : `${person.display_name}'s day`}</strong>
+                          <span className="month-event-group-count">{personEvents.length}</span>
+                        </div>
+                        <div className="month-event-group-list">
+                          {personEvents.map((e) => (
                         <div
                           key={e.id}
                           className={
@@ -923,13 +940,6 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                                 <Clock size={13} /> {timeLabel(e)}
                                 {e.start_time && ` ${zoneLabel(tz)}`}
                               </span>
-                              {owner && (
-                                <Avatar
-                                  url={owner.avatar_url}
-                                  name={owner.display_name}
-                                  color={colorOf(owner.user_id)}
-                                />
-                              )}
                             </span>
                           </button>
                           {mapHref(e.place) && (
@@ -943,8 +953,10 @@ export default function Calendar({ session, member, space, onProfileChange }) {
                             </a>
                           )}
                         </div>
-                      );
-                    })}
+                          ))}
+                        </div>
+                      </section>
+                    ))}
                   </div>
                 </aside>
               </div>

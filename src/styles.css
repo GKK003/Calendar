@@ -505,6 +505,47 @@ label.check {
   gap: 12px;
   overflow-y: auto;
 }
+.month-event-group {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.68);
+}
+.month-event-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 1px 2px;
+}
+.month-event-group-head strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.month-event-group-count {
+  flex: none;
+  min-width: 23px;
+  padding: 3px 7px;
+  border-radius: 99px;
+  color: var(--muted);
+  background: var(--tint);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.month-event-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .empty {
   color: var(--muted);
   font-size: 14px;
