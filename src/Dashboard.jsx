@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { format, parseISO } from 'date-fns'
-import { CalendarDays, Clock3, MapPin, MessageCircle, Plus, Sparkles } from 'lucide-react'
+import { addDays, format, parseISO } from 'date-fns'
+import { Activity, CalendarDays, Clock3, MapPin, MessageCircle, Plus, Sparkles } from 'lucide-react'
 import './dashboard.css'
 import './gallery.css'
 import Avatar from './Avatar.jsx'
@@ -36,11 +36,16 @@ function EventRow({ e, owner, color, showDate, zone, onOpen }) {
           rel="noopener noreferrer"
           aria-label={`Open map for ${e.title}`}
         >
-          <MapPin size={16} /> <span>Open map</span>
+          <MapPin size={14} /> <span>Open map</span>
         </a>
       )}
     </div>
   )
+}
+
+function secondsAt(time) {
+  const [hours, minutes] = time.slice(0, 5).split(':').map(Number)
+  return hours * 3600 + minutes * 60
 }
 
 export default function Dashboard({
@@ -62,6 +67,9 @@ export default function Dashboard({
   const todayLabel = new Intl.DateTimeFormat(undefined, {
     timeZone: zone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }).format(now)
+  const nowParts = nowClock.split(':').map(Number)
+  const nowSeconds = nowParts[0] * 3600 + nowParts[1] * 60 + nowParts[2]
+  const yesterday = format(addDays(parseISO(today), -1), 'yyyy-MM-dd')
 
   // Keep upcoming events and the two-hour deadline list current while the page is open.
   useEffect(() => {
@@ -74,11 +82,26 @@ export default function Dashboard({
     }
   }, [])
 
-  const todays = events.filter((e) => e.date === today && (!e.start_time || `${e.start_time.slice(0, 5)}:00` > nowClock))
+  const happeningNow = sortEvents(events.filter((e) => {
+    if (e.date === today && !e.start_time) return true
+    if (!e.start_time || !e.end_time) return false
+
+    const start = secondsAt(e.start_time)
+    const end = secondsAt(e.end_time)
+    if (e.date === today) {
+      return end > start
+        ? nowSeconds >= start && nowSeconds < end
+        : end < start && nowSeconds >= start
+    }
+    return e.date === yesterday && end < start && nowSeconds < end
+  }))
+  const happeningIds = new Set(happeningNow.map((e) => e.id))
+  const todays = events.filter((e) =>
+    e.date === today && !happeningIds.has(e.id) &&
+    (!e.start_time || secondsAt(e.start_time) > nowSeconds),
+  )
   const mine = sortEvents(todays.filter((e) => e.user_id === me.user_id))
-  const specialToday = todays.filter((e) => e.type === 'special')
-  const nowParts = nowClock.split(':').map(Number)
-  const nowSeconds = nowParts[0] * 3600 + nowParts[1] * 60 + nowParts[2]
+  const specialToday = [...todays, ...happeningNow].filter((e) => e.type === 'special')
   const deadlines = todays
     .filter((e) => e.start_time)
     .map((e) => {
@@ -87,6 +110,10 @@ export default function Dashboard({
     })
     .filter((item) => item.secondsUntil > 0 && item.secondsUntil <= 2 * 60 * 60)
     .sort((a, b) => a.secondsUntil - b.secondsUntil)
+  const dayStatus = [
+    happeningNow.length ? `${happeningNow.length} happening now` : null,
+    todays.length ? `${todays.length} upcoming ${todays.length === 1 ? 'event' : 'events'} today` : null,
+  ].filter(Boolean).join(' · ') || 'Nothing left today'
 
   function startsIn(seconds) {
     const minutes = Math.ceil(seconds / 60)
@@ -112,7 +139,7 @@ export default function Dashboard({
         <div className="dhero-text">
           <h1>Your day</h1>
           <p className="muted">
-            {todayLabel} · {todays.length === 0 ? 'Nothing left today' : `${todays.length} upcoming ${todays.length === 1 ? 'event' : 'events'} today`}
+            {todayLabel} · {dayStatus}
           </p>
           <div className="dhero-actions">
             <button className="btn primary sm" onClick={() => onNewEvent()}>
@@ -134,6 +161,34 @@ export default function Dashboard({
           <strong>Today is special:</strong> {specialToday.map((e) => e.title).join(', ')}
         </section>
       )}
+
+      <section className="card ddeadlines dhappening">
+        <div className="ddeadline-head">
+          <span className="dhappening-icon"><Activity size={18} /></span>
+          <div>
+            <h2>Happening now</h2>
+            <small>Events underway in {zoneLabel(zone)} time</small>
+          </div>
+          <span className="dhappening-count">{happeningNow.length}</span>
+        </div>
+        {happeningNow.length === 0 ? (
+          <p className="empty">Nothing is happening right now.</p>
+        ) : (
+          <div className="dhappening-list">
+            {happeningNow.map((e) => (
+              <EventRow
+                key={e.id}
+                e={e}
+                owner={memberById[e.user_id]}
+                color={colorOf(e.user_id)}
+                showDate={e.date !== today}
+                zone={zone}
+                onOpen={onOpenEvent}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="card ddeadlines">
         <div className="ddeadline-head">
