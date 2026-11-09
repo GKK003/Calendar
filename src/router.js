@@ -5,6 +5,7 @@ export const PATHS = {
   today: '/',
   month: '/month',
   year: '/year',
+  'world-time': '/world-time',
   gallery: '/gallery',
   games: '/games',
   circle: '/circle',

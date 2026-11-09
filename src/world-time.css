@@ -1,0 +1,93 @@
+.world-time {
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.world-time-heading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.world-time-heading h1 {
+  font-size: clamp(28px, 5vw, 38px);
+  font-weight: 600;
+}
+
+.world-time-icon {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--tint-2);
+  color: var(--on-pink);
+}
+
+.world-time-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(14px, 3vw, 24px);
+  padding: clamp(14px, 3vw, 24px);
+}
+
+.world-time-entry,
+.world-time-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.world-time-cities {
+  margin-top: 6px;
+}
+
+.world-time-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.world-time-fields input {
+  min-width: 0;
+  min-height: 44px;
+}
+
+.world-time-result {
+  padding: clamp(14px, 3vw, 24px);
+  border: 1px solid var(--green);
+  border-radius: 16px;
+  background: var(--green-soft);
+}
+
+.world-time-result h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.world-time-match time {
+  display: grid;
+  gap: 4px;
+}
+
+.world-time-match strong {
+  font-size: clamp(32px, 6vw, 48px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+@media (max-width: 670px) {
+  .world-time-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .world-time-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

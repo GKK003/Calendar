@@ -31,6 +31,7 @@ import {
   Images,
   MessageCircle,
   Gamepad2,
+  Globe,
   UsersRound,
   Menu,
   X,
@@ -75,9 +76,10 @@ const Chat = lazy(() => import("./Chat.jsx"));
 const Games = lazy(() => import("./Games.jsx"));
 const CallOverlay = lazy(() => import("./CallOverlay.jsx"));
 const EventForm = lazy(() => import("./EventForm.jsx"));
+const WorldTime = lazy(() => import("./WorldTime.jsx"));
 const VIEW_TITLES = {
   today: "Today", month: "Month", year: "Year", gallery: "Gallery",
-  games: "Games", circle: "Circle", chat: "Chat", profile: "Profile",
+  games: "Games", circle: "Circle", chat: "Chat", profile: "Profile", "world-time": "World Time",
 };
 
 export default function Calendar({ session, member, initialMembers, space, onProfileChange }) {
@@ -603,6 +605,15 @@ export default function Calendar({ session, member, initialMembers, space, onPro
             <span>Year</span>
           </button>
           <button type="button"
+            className={"rail-btn" + (view === "world-time" ? " on" : "")}
+            aria-current={view === "world-time" ? "page" : undefined}
+            onClick={() => setView("world-time")}
+            aria-label="World Time"
+          >
+            <Globe size={20} />
+            <span>World Time</span>
+          </button>
+          <button type="button"
             className={"rail-btn" + (view === "gallery" ? " on" : "")}
             aria-current={view === "gallery" ? "page" : undefined}
             onClick={() => setView("gallery")}
@@ -684,7 +695,7 @@ export default function Calendar({ session, member, initialMembers, space, onPro
             </div>
           )}
           {showCalendar && eventsPending && <p className="load-status" role="status">Loading events…</p>}
-          {view !== "chat" && view !== "games" && view !== "today" && view !== "circle" && (
+          {view !== "chat" && view !== "games" && view !== "today" && view !== "circle" && view !== "world-time" && (
             <header className="top">
               {view !== "month" && (
                 <div className="hello-row">
@@ -737,6 +748,7 @@ export default function Calendar({ session, member, initialMembers, space, onPro
             !pushHidden &&
             view !== "chat" &&
             view !== "games" &&
+            view !== "world-time" &&
             view !== "circle" && (
               <div className="push-banner">
                 <span>
@@ -774,6 +786,8 @@ export default function Calendar({ session, member, initialMembers, space, onPro
             />
           ) : view === "games" ? (
             <Games space={space} member={member} members={members} />
+          ) : view === "world-time" ? (
+            <WorldTime tz={tz} />
           ) : view === "circle" ? (
             <CirclePage
               space={space}
@@ -1103,21 +1117,15 @@ export default function Calendar({ session, member, initialMembers, space, onPro
         </main>
       </div>
 
-      {view !== "gallery" &&
-        view !== "profile" &&
-        view !== "chat" &&
-        view !== "games" &&
-        view !== "circle" && (
-          <button type="button"
-            className="fab"
-            onClick={() =>
-              openNew(view === "today" ? todayKey : selected)
-            }
-            aria-label="Add event"
-          >
-            <Plus size={26} />
-          </button>
-        )}
+      {(view === "today" || showCalendar) && (
+        <button type="button"
+          className="fab"
+          onClick={() => openNew(view === "today" ? todayKey : selected)}
+          aria-label="Add event"
+        >
+          <Plus size={26} />
+        </button>
+      )}
 
       {callActive && (
         <Suspense fallback={null}>

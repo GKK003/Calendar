@@ -84,7 +84,7 @@ const dateFormat = zonedFormatter('en-CA', {
   year: 'numeric', month: '2-digit', day: '2-digit',
 })
 const offsetFormat = zonedFormatter('en-US', {
-  hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  hourCycle: 'h23', era: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
 })
 const wallTimeFormat = zonedFormatter('en-GB', {
   hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -102,8 +102,25 @@ export function dateInZone(tz, date = new Date()) {
 
 function tzOffset(tz, ts) {
   const p = offsetFormat(tz).formatToParts(new Date(ts))
-  const g = (t) => Number(p.find((x) => x.type === t).value)
-  return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second')) - ts
+  const get = (type) => p.find((part) => part.type === type).value
+  const year = Number(get('year'))
+  const utc = new Date(0)
+  utc.setUTCFullYear(get('era') === 'BC' ? 1 - year : year, Number(get('month')) - 1, Number(get('day')))
+  utc.setUTCHours(Number(get('hour')), Number(get('minute')), Number(get('second')))
+  return utc.getTime() - ts
+}
+
+export function wallTimeInstants(date, time, tz) {
+  const wallTime = `${date}T${time}`
+  const ts = Date.parse(`${wallTime}:00Z`)
+  if (!Number.isFinite(ts) || new Date(ts).toISOString().slice(0, 16) !== wallTime) return null
+
+  // Check both sides of a clock change. A local time can occur twice or be skipped.
+  const day = 86_400_000
+  const offsets = new Set([tzOffset(tz, ts - day), tzOffset(tz, ts + day)])
+  return Array.from(offsets, (offset) => ts - offset)
+    .filter((instant) => instant + tzOffset(tz, instant) === ts)
+    .sort((a, b) => a - b)
 }
 
 // Convert a wall-clock time on a date from one zone to another (handles daylight saving)

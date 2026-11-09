@@ -1163,7 +1163,7 @@
   align-items: stretch !important;
   justify-content: flex-start !important;
   gap: clamp(2px, 0.9dvh, 9px) !important;
-  overflow: hidden !important;
+  overflow: hidden auto !important;
   background: #fff9fb !important;
   border: 0 !important;
   border-right: 3px solid #25212a !important;
