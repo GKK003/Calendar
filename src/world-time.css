@@ -98,6 +98,22 @@
   text-decoration: none;
 }
 
+.world-time-android,
+.world-time-alarm-request {
+  display: grid;
+  gap: 8px;
+}
+
+.world-time-android {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--field);
+}
+
+.world-time-alarm-request {
+  justify-items: start;
+}
+
 @media (max-width: 670px) {
   .world-time-card {
     grid-template-columns: minmax(0, 1fr);
