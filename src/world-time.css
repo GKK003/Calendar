@@ -35,8 +35,7 @@
 }
 
 .world-time-entry,
-.world-time-result,
-.world-time-readout {
+.world-time-result {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -79,39 +78,6 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
-}
-
-.world-time-alarm {
-  display: grid;
-  gap: 8px;
-  border-top: 1px solid var(--green);
-  padding-top: 14px;
-}
-
-.world-time-alarm-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.world-time-alarm-actions a {
-  text-decoration: none;
-}
-
-.world-time-android,
-.world-time-alarm-request {
-  display: grid;
-  gap: 8px;
-}
-
-.world-time-android {
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--field);
-}
-
-.world-time-alarm-request {
-  justify-items: start;
 }
 
 @media (max-width: 670px) {

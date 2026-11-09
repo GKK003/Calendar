@@ -11,9 +11,10 @@ const Lightbox = lazy(() => import('./Lightbox.jsx'))
 function EventRow({ e, owner, color, showDate, zone, onOpen }) {
   const special = e.type === 'special'
   const originLabel = eventOriginLabel(e)
+  const map = mapHref(e.place)
   return (
-    <div className="drow-wrap">
-      <button type="button" className={'drow' + (special ? ' special' : '')} onClick={() => onOpen(e)}>
+    <div className={'drow-wrap' + (map ? ' ev-card' : '') + (map && special ? ' special' : '')}>
+      <button type="button" className={'drow' + (!map && special ? ' special' : '')} onClick={() => onOpen(e)}>
         <i style={{ background: TYPES[e.type].color }} />
         <span className="drow-main">
           <strong>
@@ -28,16 +29,16 @@ function EventRow({ e, owner, color, showDate, zone, onOpen }) {
         </span>
         {owner && <Avatar url={owner.avatar_url} name={owner.display_name} color={color} />}
       </button>
-      {mapHref(e.place) && (
+      {map && (
         <a
-          className="drow-map"
-          href={mapHref(e.place)}
+          className="map-btn"
+          href={map}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Open map for ${e.title}; opens in a new tab`}
           title="Opens in a new tab"
         >
-          <MapPin size={14} aria-hidden="true" /> <span>Open map</span>
+          <MapPin size={16} aria-hidden="true" /> Open map
         </a>
       )}
     </div>

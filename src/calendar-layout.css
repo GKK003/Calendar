@@ -996,9 +996,10 @@
   background: var(--green);
 }
 
-.drow-map:focus-visible,
+.ev-card > .ev:focus-visible,
+.ev-card > .drow:focus-visible,
 .map-btn:focus-visible {
-  outline-offset: 3px;
+  outline-offset: -2px;
 }
 
 /* partner profile */

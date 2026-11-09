@@ -150,8 +150,7 @@
 }
 .drow-wrap {
   display: flex;
-  align-items: stretch;
-  gap: 8px;
+  flex-direction: column;
   min-width: 0;
 }
 .drow {
@@ -170,24 +169,10 @@
 .drow:hover {
   background: var(--tint);
 }
-.drow-map {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  gap: 4px;
-  padding: 0 8px;
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--green-soft);
-  color: #1f5f45;
-  font-size: 11px;
-  text-decoration: none;
-}
-.drow-map:hover {
-  background: var(--green);
+.drow-wrap.ev-card > .drow {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .drow > i {
   flex: none;
@@ -323,11 +308,6 @@
   padding: 16px 18px;
   gap: 14px;
   border-radius: 18px;
-}
-.dme .drow-map,
-.dpartner .drow-map {
-  padding: 0 8px;
-  border-radius: 12px;
 }
 .dme .drow-main strong,
 .dpartner .drow-main strong {
