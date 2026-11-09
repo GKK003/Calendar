@@ -81,22 +81,20 @@
   line-height: 1.1;
 }
 
-.world-time-alarm summary {
-  cursor: pointer;
-  list-style: none;
-}
-
-.world-time-alarm summary::-webkit-details-marker {
-  display: none;
-}
-
-.world-time-alarm-options {
+.world-time-alarm {
   display: grid;
   gap: 8px;
-  margin-top: 12px;
+  border-top: 1px solid var(--green);
+  padding-top: 14px;
 }
 
-.world-time-alarm-options a {
+.world-time-alarm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.world-time-alarm-actions a {
   text-decoration: none;
 }
 

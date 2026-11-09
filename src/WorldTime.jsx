@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Globe } from 'lucide-react'
 import { ZONES, clockIn, dateInZone, wallTimeInstants } from './lib.js'
-import WorldTimeAlarm, { lastReminderInstant } from './WorldTimeAlarm.jsx'
+import WorldTimeAlarm from './WorldTimeAlarm.jsx'
 import './world-time.css'
 
 const dateFormats = new Map(ZONES.map(({ id }) => [
@@ -18,7 +18,9 @@ export default function WorldTime({ tz }) {
   const instants = date && time ? wallTimeInstants(date, time, source) : null
   const repeated = instants?.length === 2
   const now = Date.now()
-  const canSetAlarm = (instant) => instant > now && instant <= lastReminderInstant
+  const alarmTimes = instants?.flatMap((instant, index) => (
+    instant > now ? [{ instant, occurrence: repeated ? occurrences[index] : '' }] : []
+  )) ?? []
 
   return (
     <section className="world-time" aria-labelledby="world-time-title">
@@ -80,18 +82,10 @@ export default function WorldTime({ tz }) {
               </div>
             ))}
           </div>
-          {instants?.length > 0 && !instants.some(canSetAlarm) && (
-            <p className="muted small">
-              {instants.every((instant) => instant <= now)
-                ? 'Choose a future time to set an alarm.'
-                : 'Choose an earlier date to set a reminder.'}
-            </p>
+          {alarmTimes.length > 0 && <WorldTimeAlarm times={alarmTimes} />}
+          {instants?.length > 0 && alarmTimes.length === 0 && (
+            <p className="muted small">Choose a future time to set an alarm.</p>
           )}
-          {instants?.map((instant, index) => (
-            canSetAlarm(instant) && (
-              <WorldTimeAlarm key={instant} instant={instant} occurrence={repeated ? occurrences[index] : undefined} />
-            )
-          ))}
         </div>
       </div>
     </section>
