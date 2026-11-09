@@ -8,7 +8,7 @@ import { TYPES, clockIn, dateInZone, eventOriginLabel, mapHref, sortEvents, time
 
 const Lightbox = lazy(() => import('./Lightbox.jsx'))
 
-function EventRow({ e, owner, color, showDate, zone, onOpen }) {
+function EventRow({ e, owner, color, showDate, zone, countdown, onOpen }) {
   const special = e.type === 'special'
   const originLabel = eventOriginLabel(e)
   const map = mapHref(e.place)
@@ -26,6 +26,7 @@ function EventRow({ e, owner, color, showDate, zone, onOpen }) {
             {timeLabel(e)}{e.start_time && zone ? ` · ${zoneLabel(zone)} time` : ''}
           </small>
           {originLabel && <small className="drow-origin">{originLabel}</small>}
+          {countdown && <small className="drow-countdown">{countdown}</small>}
         </span>
         {owner && <Avatar url={owner.avatar_url} name={owner.display_name} color={color} />}
       </button>
@@ -195,10 +196,15 @@ export default function Dashboard({
         ) : (
           <div className="ddeadline-list">
             {deadlines.map(({ event: e, secondsUntil }) => (
-              <div className="ddeadline-row" key={e.id}>
-                <EventRow e={e} owner={memberById[e.user_id]} color={colorOf(e.user_id)} zone={zone} onOpen={onOpenEvent} />
-                <small>{startsIn(secondsUntil)}</small>
-              </div>
+              <EventRow
+                key={e.id}
+                e={e}
+                owner={memberById[e.user_id]}
+                color={colorOf(e.user_id)}
+                zone={zone}
+                countdown={startsIn(secondsUntil)}
+                onOpen={onOpenEvent}
+              />
             ))}
           </div>
         )}

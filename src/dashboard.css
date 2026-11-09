@@ -111,21 +111,6 @@
   flex-direction: column;
   gap: 10px;
 }
-.ddeadline-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.ddeadline-row .drow-wrap {
-  flex: 1;
-}
-.ddeadline-row > small {
-  flex: none;
-  color: #8e5c1f;
-  font-size: 12px;
-  font-weight: 650;
-  white-space: nowrap;
-}
 .dpanel {
   padding: 20px;
   display: flex;
@@ -195,6 +180,12 @@
 }
 .drow-main small {
   color: var(--muted);
+}
+.drow-main .drow-countdown {
+  margin-top: 2px;
+  color: #8e5c1f;
+  font-size: 12px;
+  font-weight: 650;
 }
 .drow-main .drow-origin {
   color: #8c7184;
