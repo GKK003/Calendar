@@ -35,7 +35,8 @@
 }
 
 .world-time-entry,
-.world-time-result {
+.world-time-result,
+.world-time-readout {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -78,6 +79,25 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
+}
+
+.world-time-alarm summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.world-time-alarm summary::-webkit-details-marker {
+  display: none;
+}
+
+.world-time-alarm-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.world-time-alarm-options a {
+  text-decoration: none;
 }
 
 @media (max-width: 670px) {
